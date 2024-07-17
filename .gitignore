@@ -1,8 +1,12 @@
 auto-save-list
 eln-cache
 eshell
+elpa
+etc
 
 *~
 recentf
 projectile-bookmarks.eld
 straight/
+transient/
+var/
