@@ -811,49 +811,23 @@ Emacs' built in commenting functionality =comment-dwim= (usually bound to =M-;=)
   <<install-lsp-deps()>>
 #+end_src
 
-Configuring default python interpreter to venv.
-
-#+begin_src emacs-lisp
-  (defvar python-path (expand-file-name "./venv/bin/python"))
-  (setq python-interpreter python-path)
-  (setq python-shell-interpreter python-path)
-#+end_src
-
 Install [[https://github.com/manateelazycat/lsp-bridge][lsp-bridge]].
 
 #+begin_src emacs-lisp
-  (defun local/lsp-bridge-get-single-lang-server-by-project (project-path filepath)
-    (let* ((json-object-type 'plist)
-           (custom-dir (expand-file-name ".cache/lsp-bridge/pyright" user-emacs-directory))
-           (custom-config (expand-file-name "pyright.json" custom-dir))
-           (default-config (json-read-file (expand-file-name "repo/lsp-bridge/langserver/pyright.json" user-emacs-directory)))
-           (settings (plist-get default-config :settings))
-           )
-
-      (plist-put settings :pythonPath (executable-find "python"))
-
-      (make-directory (file-name-directory custom-config) t)
-
-      (with-temp-file custom-config
-        (insert (json-encode default-config)))
-
-      custom-config))
-
   (use-package lsp-bridge
     :after yasnippet markdown-mode
     :straight '(lsp-bridge :type git :host github :repo "manateelazycat/lsp-bridge"
-    			 :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
-    			 :build (:not compile))
+                         :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
+                         :build (:not compile))
     :init
     (global-lsp-bridge-mode)
-    :hook
-    (python-mode-hook . (setq-local lsp-bridge-get-single-lang-server-by-project 'local/lsp-bridge-get-single-lang-server-by-project))
-    (pyvenv-post-activate-hooks . lsp-bridge-restart-process))
+    :config
+    (setq lsp-bridge-python-command (expand-file-name "./venv/bin/python3" user-emacs-directory)))
 #+end_src
 
-#+RESULTS:
-
 *** Debug Adapter
+
+*** Python
 
 *** Typescript
 
