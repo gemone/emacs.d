@@ -10,3 +10,6 @@ projectile-bookmarks.eld
 straight/
 transient/
 var/
+
+.cache
+venv
