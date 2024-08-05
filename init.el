@@ -78,7 +78,7 @@
   ;; :hook (kill-emacs . fontaine-store-latest-preset)
   :config
   (setq fontaine-presets
-	'((regular
+      '((regular
            :default-height 140
            :default-weight regular
            :fixed-pitch-height 1.0
@@ -124,37 +124,37 @@
      (frame-parameter nil 'font)
      charset
      (font-spec :family
-		(cond
-		 ((eq system-type 'darwin)
-		  (cond
-		   ((member "PingFang SC" (font-family-list)) "PingFang SC")
-		   ((member "WenQuanYi Zen Hei" (font-family-list)) "WenQuanYi Zen Hei")
-		   ((member "Microsoft YaHei" (font-family-list)) "Microsoft YaHei")
-		   ))
-		 ((eq system-type 'gnu/linux)
-		  (cond
-		   ((member "WenQuanYi Micro Hei" (font-family-list)) "WenQuanYi Micro Hei")
-		   ((member "Microsoft YaHei" (font-family-list)) "Microsoft YaHei")
-		   ))
-		 (t
-		  (cond
-		   ((member "Sarasa Term SC Nerd" (font-family-list)) "Sarasa Term SC Nerd")
-		   ((member "Microsoft YaHei" (font-family-list)) "Microsoft YaHei")
-		   )))
-		)))
+  	      (cond
+  	       ((eq system-type 'darwin)
+  		(cond
+  		 ((member "PingFang SC" (font-family-list)) "PingFang SC")
+  		 ((member "WenQuanYi Zen Hei" (font-family-list)) "WenQuanYi Zen Hei")
+  		 ((member "Microsoft YaHei" (font-family-list)) "Microsoft YaHei")
+  		 ))
+  	       ((eq system-type 'gnu/linux)
+  		(cond
+  		 ((member "WenQuanYi Micro Hei" (font-family-list)) "WenQuanYi Micro Hei")
+  		 ((member "Microsoft YaHei" (font-family-list)) "Microsoft YaHei")
+  		 ))
+  	       (t
+  		(cond
+  		 ((member "Sarasa Term SC Nerd" (font-family-list)) "Sarasa Term SC Nerd")
+  		 ((member "Microsoft YaHei" (font-family-list)) "Microsoft YaHei")
+  		 )))
+  	      )))
 
   ;; set Chinese font scale
   (setq face-font-rescale-alist `(
-				  ("Symbola"             . 1.3)
-				  ("Microsoft YaHei"     . 1.2)
-				  ("WenQuanYi Zen Hei"   . 1.2)
-				  ("Sarasa Term SC Nerd" . 1.2)
-				  ("PingFang SC"         . 1.16)
-				  ("Lantinghei SC"       . 1.16)
-				  ("Kaiti SC"            . 1.16)
-				  ("Yuanti SC"           . 1.16)
-				  ("Apple Color Emoji"   . 0.91)
-				  ))
+  				("Symbola"             . 1.3)
+  				("Microsoft YaHei"     . 1.2)
+  				("WenQuanYi Zen Hei"   . 1.2)
+  				("Sarasa Term SC Nerd" . 1.2)
+  				("PingFang SC"         . 1.16)
+  				("Lantinghei SC"       . 1.16)
+  				("Kaiti SC"            . 1.16)
+  				("Yuanti SC"           . 1.16)
+  				("Apple Color Emoji"   . 0.91)
+  				))
   )
 
 (setq modus-themes-italic-constructs t
@@ -222,8 +222,8 @@
 
 (use-package counsel
   :bind (("C-M-j" . 'counsel-switch-buffer)
-	 :map minibuffer-local-map
-	 ("C-r" . 'counsel-minibuffer-history))
+       :map minibuffer-local-map
+       ("C-r" . 'counsel-minibuffer-history))
   :custom
   (counsel-linux-app-format-function #'counsel-linux-app-format-function-name-only)
   :config
@@ -316,58 +316,58 @@
   :config
   (progn
     (setq treemacs-collapse-dirs                   (if treemacs-python-executable 3 0)
-	  treemacs-deferred-git-apply-delay        0.5
-	  treemacs-directory-name-transformer      #'identity
-	  treemacs-display-in-side-window          t
-	  treemacs-eldoc-display                   'simple
-	  treemacs-file-event-delay                2000
-	  treemacs-file-extension-regex            treemacs-last-period-regex-value
-	  treemacs-file-follow-delay               0.2
-	  treemacs-file-name-transformer           #'identity
-	  treemacs-follow-after-init               t
-	  treemacs-expand-after-init               t
-	  treemacs-find-workspace-method           'find-for-file-or-pick-first
-	  treemacs-git-command-pipe                ""
-	  treemacs-goto-tag-strategy               'refetch-index
-	  treemacs-header-scroll-indicators        '(nil . "^^^^^^")
-	  treemacs-hide-dot-git-directory          t
-	  treemacs-indentation                     2
-	  treemacs-indentation-string              " "
-	  treemacs-is-never-other-window           nil
-	  treemacs-max-git-entries                 5000
-	  treemacs-missing-project-action          'ask
-	  treemacs-move-files-by-mouse-dragging    t
-	  treemacs-move-forward-on-expand          nil
-	  treemacs-no-png-images                   nil
-	  treemacs-no-delete-other-windows         t
-	  treemacs-project-follow-cleanup          nil
-	  treemacs-persist-file                    (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
-	  treemacs-position                        'left
-	  treemacs-read-string-input               'from-child-frame
-	  treemacs-recenter-distance               0.1
-	  treemacs-recenter-after-file-follow      nil
-	  treemacs-recenter-after-tag-follow       nil
-	  treemacs-recenter-after-project-jump     'always
-	  treemacs-recenter-after-project-expand   'on-distance
-	  treemacs-litter-directories              '("/node_modules" "/.venv" "/.cask")
-	  treemacs-project-follow-into-home        nil
-	  treemacs-show-cursor                     nil
-	  treemacs-show-hidden-files               t
-	  treemacs-silent-filewatch                nil
-	  treemacs-silent-refresh                  nil
-	  treemacs-sorting                         'alphabetic-asc
-	  treemacs-select-when-already-in-treemacs 'move-back
-	  treemacs-space-between-root-nodes        t
-	  treemacs-tag-follow-cleanup              t
-	  treemacs-tag-follow-delay                1.5
-	  treemacs-text-scale                      nil
-	  treemacs-user-mode-line-format           nil
-	  treemacs-user-header-line-format         nil
-	  treemacs-wide-toggle-width               70
-	  treemacs-width                           35
-	  treemacs-width-increment                 1
-	  treemacs-width-is-initially-locked       t
-	  treemacs-workspace-switch-cleanup        nil)
+  	treemacs-deferred-git-apply-delay        0.5
+  	treemacs-directory-name-transformer      #'identity
+  	treemacs-display-in-side-window          t
+  	treemacs-eldoc-display                   'simple
+  	treemacs-file-event-delay                2000
+  	treemacs-file-extension-regex            treemacs-last-period-regex-value
+  	treemacs-file-follow-delay               0.2
+  	treemacs-file-name-transformer           #'identity
+  	treemacs-follow-after-init               t
+  	treemacs-expand-after-init               t
+  	treemacs-find-workspace-method           'find-for-file-or-pick-first
+  	treemacs-git-command-pipe                ""
+  	treemacs-goto-tag-strategy               'refetch-index
+  	treemacs-header-scroll-indicators        '(nil . "^^^^^^")
+  	treemacs-hide-dot-git-directory          t
+  	treemacs-indentation                     2
+  	treemacs-indentation-string              " "
+  	treemacs-is-never-other-window           nil
+  	treemacs-max-git-entries                 5000
+  	treemacs-missing-project-action          'ask
+  	treemacs-move-files-by-mouse-dragging    t
+  	treemacs-move-forward-on-expand          nil
+  	treemacs-no-png-images                   nil
+  	treemacs-no-delete-other-windows         t
+  	treemacs-project-follow-cleanup          nil
+  	treemacs-persist-file                    (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
+  	treemacs-position                        'left
+  	treemacs-read-string-input               'from-child-frame
+  	treemacs-recenter-distance               0.1
+  	treemacs-recenter-after-file-follow      nil
+  	treemacs-recenter-after-tag-follow       nil
+  	treemacs-recenter-after-project-jump     'always
+  	treemacs-recenter-after-project-expand   'on-distance
+  	treemacs-litter-directories              '("/node_modules" "/.venv" "/.cask")
+  	treemacs-project-follow-into-home        nil
+  	treemacs-show-cursor                     nil
+  	treemacs-show-hidden-files               t
+  	treemacs-silent-filewatch                nil
+  	treemacs-silent-refresh                  nil
+  	treemacs-sorting                         'alphabetic-asc
+  	treemacs-select-when-already-in-treemacs 'move-back
+  	treemacs-space-between-root-nodes        t
+  	treemacs-tag-follow-cleanup              t
+  	treemacs-tag-follow-delay                1.5
+  	treemacs-text-scale                      nil
+  	treemacs-user-mode-line-format           nil
+  	treemacs-user-header-line-format         nil
+  	treemacs-wide-toggle-width               70
+  	treemacs-width                           35
+  	treemacs-width-increment                 1
+  	treemacs-width-is-initially-locked       t
+  	treemacs-workspace-switch-cleanup        nil)
 
     ;; The default width and height of the icons is 22 pixels. If you are
     ;; using a Hi-DPI display, uncomment this to double the icon size.
@@ -453,6 +453,7 @@
   (visual-line-mode 1))
 
 (use-package org
+  :straight nil
   :commands (org-capture org-agenda)
   :hook (org-mode . emaconf/org-mode-setup)
   :config
@@ -507,8 +508,9 @@
          ("gcc" . evilnc-comment-or-uncomment-lines)))
 
 (use-package smartparens
-  :ensure smartparens  ;; install the package
-  :hook (prog-mode text-mode markdown-mode) ;; add `smartparens-mode` to these hooks
+  :hook
+  (prog-mode . smartparens-mode) 
+  (text-mode . smartparens-mode) 
   :config
   ;; load default config
   (require 'smartparens-config))
@@ -529,9 +531,9 @@
   (evil-normalize-keymaps)
 
   (setq eshell-history-size         10000
-	eshell-buffer-maximum-lines 10000
-	eshell-hist-ignoredups t
-	eshell-scroll-to-bottom-on-input nil))
+        eshell-buffer-maximum-lines 10000
+        eshell-hist-ignoredups t
+        eshell-scroll-to-bottom-on-input nil))
 
 (use-package eshell-git-prompt)
 (use-package eshell
@@ -556,8 +558,8 @@
                          :build (:not compile))
   :bind
   (:map evil-normal-state-map
-	("K" . lsp-bridge-peek)
-	("J" . lsp-bridge-peek-through))
+        ("K" . lsp-bridge-peek)
+        ("J" . lsp-bridge-peek-through))
   :init
   (global-lsp-bridge-mode)
   :config

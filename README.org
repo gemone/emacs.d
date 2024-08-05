@@ -1,4 +1,3 @@
-
 #+title: Emacs Config
 #+PROPERTY: header-args:emacs-lisp :tangle ./init.el :mkdirp yes
 #+PROPERTY: header-args:shell :tangle ./setup.sh :mkdirp yes
@@ -642,6 +641,7 @@ The =emaconf/org-font-setup= function configures various text faces to tweak the
     (visual-line-mode 1))
 
   (use-package org
+    :straight nil
     :commands (org-capture org-agenda)
     :hook (org-mode . emaconf/org-mode-setup)
     :config
@@ -732,12 +732,13 @@ Emacs' built in commenting functionality =comment-dwim= (usually bound to =M-;=)
            ("gcc" . evilnc-comment-or-uncomment-lines)))
 #+end_src
 
-** Smartparens
+** Pair mode
 
 #+begin_src emacs-lisp
   (use-package smartparens
-    :ensure smartparens  ;; install the package
-    :hook (prog-mode text-mode markdown-mode) ;; add `smartparens-mode` to these hooks
+    :hook
+    (prog-mode . smartparens-mode) 
+    (text-mode . smartparens-mode) 
     :config
     ;; load default config
     (require 'smartparens-config))
@@ -768,9 +769,9 @@ Emacs' built in commenting functionality =comment-dwim= (usually bound to =M-;=)
     (evil-normalize-keymaps)
 
     (setq eshell-history-size         10000
-  	eshell-buffer-maximum-lines 10000
-  	eshell-hist-ignoredups t
-  	eshell-scroll-to-bottom-on-input nil))
+          eshell-buffer-maximum-lines 10000
+          eshell-hist-ignoredups t
+          eshell-scroll-to-bottom-on-input nil))
 
   (use-package eshell-git-prompt)
   (use-package eshell
@@ -846,8 +847,8 @@ Install [[https://github.com/manateelazycat/lsp-bridge][lsp-bridge]].
                            :build (:not compile))
     :bind
     (:map evil-normal-state-map
-  	("K" . lsp-bridge-peek)
-  	("J" . lsp-bridge-peek-through))
+          ("K" . lsp-bridge-peek)
+          ("J" . lsp-bridge-peek-through))
     :init
     (global-lsp-bridge-mode)
     :config
@@ -892,4 +893,3 @@ For Windows:
     :config
     (setq typescript-indent-level 2))
 #+end_src
-
