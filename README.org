@@ -732,6 +732,17 @@ Emacs' built in commenting functionality =comment-dwim= (usually bound to =M-;=)
            ("gcc" . evilnc-comment-or-uncomment-lines)))
 #+end_src
 
+** Smartparens
+
+#+begin_src emacs-lisp
+  (use-package smartparens
+    :ensure smartparens  ;; install the package
+    :hook (prog-mode text-mode markdown-mode) ;; add `smartparens-mode` to these hooks
+    :config
+    ;; load default config
+    (require 'smartparens-config))
+#+end_src
+
 ** Rainbow Delimiters
 
 [[https://github.com/Fanael/rainbow-delimiters][rainbow-delimiters]] is useful in programming modes because it colorizes nested parentheses and brackets according to their nesting depth.  This makes it a lot easier to visually match parentheses in Emacs Lisp code without having to count them yourself.
@@ -788,46 +799,89 @@ Emacs' built in commenting functionality =comment-dwim= (usually bound to =M-;=)
 - Linux: =bash setup.sh=
 - Windows: =.\setup.ps1=
 
+#+NAME: python-venv
+#+begin_src emacs-lisp :tangle no
+  "./etc/python-venv"
+#+end_src
+
 #+NAME: add-venv
-#+begin_src emacs-lisp :tango no
-  "python3 -m venv ./venv"
+#+begin_src emacs-lisp :tangle no :noweb yes
+  "python3 -m venv <<python-venv()>>"
 #+end_src
 
 #+NAME: install-lsp-deps
-#+begin_src emacs-lisp :tango no
-  "pip3 install epc orjson sexpdata six setuptools paramiko rapidfuzz"
+#+begin_src emacs-lisp :tangle no
+  "pip3 install -U epc orjson sexpdata six setuptools paramiko rapidfuzz"
 #+end_src
+
+For Linux:
 
 #+begin_src shell :noweb yes
   # For Linux
   <<add-venv()>>
-  source ./venv/bin/activate
+  source <<python-venv()>>/bin/activate
   <<install-lsp-deps()>>
 #+end_src
 
+For Windows:
+
 #+begin_src powershell :noweb yes
   <<add-venv()>>
-  .\venv\bin\Activate.ps1
+  <<python-venv()>>/bin/Activate.ps1
   <<install-lsp-deps()>>
+#+end_src
+
+Add venv python to exec-path.
+
+#+begin_src emacs-lisp :noweb yes
+  (add-to-list 'exec-path (expand-file-name "<<python-venv()>>/bin" user-emacs-directory))
 #+end_src
 
 Install [[https://github.com/manateelazycat/lsp-bridge][lsp-bridge]].
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :noweb yes
   (use-package lsp-bridge
-    :after yasnippet markdown-mode
     :straight '(lsp-bridge :type git :host github :repo "manateelazycat/lsp-bridge"
-                         :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
-                         :build (:not compile))
+                           :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
+                           :build (:not compile))
+    :bind
+    (:map evil-normal-state-map
+  	("K" . lsp-bridge-peek)
+  	("J" . lsp-bridge-peek-through))
     :init
     (global-lsp-bridge-mode)
     :config
-    (setq lsp-bridge-python-command (expand-file-name "./venv/bin/python3" user-emacs-directory)))
+    (setq lsp-bridge-python-command (expand-file-name "<<python-venv()>>/bin/python3" user-emacs-directory)))
 #+end_src
 
 *** Debug Adapter
 
 *** Python
+
+Use [[https://github.com/pappasam/jedi-language-server][jedi]] as LSP.
+
+#+NAME: install-python-lsp
+#+begin_src emacs-lisp :tango no
+  "pip3 install -U jedi-language-server
+  pip3 install -U ruff-lsp"
+#+end_src
+
+For Linux:
+
+#+begin_src shell :noweb yes
+  <<install-python-lsp()>>
+#+end_src
+
+For Windows:
+
+#+begin_src powershell :noweb yes
+  <<install-python-lsp()>>
+#+end_src
+
+#+begin_src emacs-lisp
+  (setq lsp-bridge-python-lsp-server "jedi")
+  (setq lsp-bridge-python-multi-lsp-server "jedi_ruff")
+#+end_src
 
 *** Typescript
 

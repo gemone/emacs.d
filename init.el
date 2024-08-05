@@ -506,6 +506,13 @@
          :map evil-normal-state-map
          ("gcc" . evilnc-comment-or-uncomment-lines)))
 
+(use-package smartparens
+  :ensure smartparens  ;; install the package
+  :hook (prog-mode text-mode markdown-mode) ;; add `smartparens-mode` to these hooks
+  :config
+  ;; load default config
+  (require 'smartparens-config))
+
 (use-package rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
 
@@ -541,19 +548,26 @@
 (use-package yasnippet-snippets
   :after yasnippet)
 
-"python3 -m venv ./venv"
-
-"pip3 install epc orjson sexpdata six setuptools paramiko rapidfuzz"
+(add-to-list 'exec-path (expand-file-name "./etc/python-venv/bin" user-emacs-directory))
 
 (use-package lsp-bridge
-  :after yasnippet markdown-mode
   :straight '(lsp-bridge :type git :host github :repo "manateelazycat/lsp-bridge"
-                       :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
-                       :build (:not compile))
+                         :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
+                         :build (:not compile))
+  :bind
+  (:map evil-normal-state-map
+	("K" . lsp-bridge-peek)
+	("J" . lsp-bridge-peek-through))
   :init
   (global-lsp-bridge-mode)
   :config
-  (setq lsp-bridge-python-command (expand-file-name "./venv/bin/python3" user-emacs-directory)))
+  (setq lsp-bridge-python-command (expand-file-name "./etc/python-venv/bin/python3" user-emacs-directory)))
+
+"pip3 install -U jedi-language-server
+pip3 install -U ruff-lsp"
+
+(setq lsp-bridge-python-lsp-server "jedi")
+(setq lsp-bridge-python-multi-lsp-server "jedi_ruff")
 
 (use-package typescript-mode
   :mode "\\.ts\\'"
