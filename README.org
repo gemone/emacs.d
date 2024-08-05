@@ -827,7 +827,7 @@ For Windows:
 
 #+begin_src powershell :noweb yes
   <<add-venv()>>
-  <<python-venv()>>/bin/Activate.ps1
+  <<python-venv()>>/Scripts/Activate.ps1
   <<install-lsp-deps()>>
 #+end_src
 
