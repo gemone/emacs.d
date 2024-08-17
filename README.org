@@ -941,15 +941,14 @@ Install [[https://github.com/emacs-lsp/lsp-mode][lsp-mode]]. lsp-mode is already
     ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
     (setq lsp-keymap-prefix "C-c l")
     (defun emaconf/lsp-mode-setup-completion ()
-      (setf (alist-get 'styles (alist-get 'lsp-capf completions-category-defaults))
-            '(orderless)))
-    :bind (
-           :map lsp-mode-map
-           ("C-c C-d" . lsp-describe-thing-at-point)
-           ([remap xref-find-definitions] . lsp-find-definition)
-           ([remap xref-find-references] . lsp-find-references)
-           :map evil-normal-state-map
-           ("gh" . lsp-describe-thing-at-point))
+      (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+            '(orderless))) ;; Configure orderless
+    :bind (:map lsp-mode-map
+                ("C-c C-d" . lsp-describe-thing-at-point)
+                ([remap xref-find-definitions] . lsp-find-definition)
+                ([remap xref-find-references] . lsp-find-references)
+                :map evil-normal-state-map
+                ("gh" . lsp-describe-thing-at-point))
     :hook
     (lsp-mode . lsp-enable-which-key-integration)
     (lsp-completion-mode . emaconf/lsp-mode-setup-completion)
