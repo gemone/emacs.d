@@ -12,6 +12,29 @@
 (defconst *is-linux* (string-equal system-type "gnu/linux"))
 (defconst *is-win* (string-equal system-type "windows-nt"))
 
+(defun sanityinc/locale-var-encoding (v)
+  "Return the encoding portion of the locale string V, or nil if missing."
+  (when v
+    (save-match-data
+      (let ((case-fold-search t))
+        (when (string-match "\\.\\([^.]*\\)\\'" v)
+          (intern (downcase (match-string 1 v))))))))
+
+(dolist (varname '("LC_ALL" "LANG" "LC_CTYPE"))
+  (let ((encoding (sanityinc/locale-var-encoding (getenv varname))))
+    (unless (memq encoding '(nil utf8 utf-8))
+      (message "Warning: non-UTF8 encoding in environment variable %s may cause interop problems with this Emacs configuration." varname))))
+
+(when (fboundp 'set-charset-priority)
+  (set-charset-priority 'unicode))
+(prefer-coding-system 'utf-8)
+(setq locale-coding-system 'utf-8)
+(unless (eq system-type 'windows-nt)
+  (set-selection-coding-system 'utf-8))
+
+(when (eq system-type 'windows-nt)
+  (setq file-name-coding-system 'gbk))
+
 ;; The default is 800 kilobytes.  Measured in bytes.
 (setq gc-cons-threshold (* 50 1000 1000))
 
@@ -433,9 +456,7 @@
                   (org-level-5 . 1.1)
                   (org-level-6 . 1.1)
                   (org-level-7 . 1.1)
-                  (org-level-8 . 1.1)))
-    (set-face-attribute (car face) nil :font "JetBrainsMonoNL Nerd Font" :weight 'regular :height (cdr face)))
-  )
+                  (org-level-8 . 1.1)))))
 
 (defun emaconf/org-mode-setup ()
   (org-indent-mode)
@@ -532,32 +553,128 @@
   :config
   (eshell-git-prompt-use-theme 'powerline))
 
-(use-package yasnippet
-  :hook (after-init . yas-global-mode))
+(use-package corfu
+  :custom
+  (corfu-cycle t)
+  (corfu-auto t)
+  (corfu-auto-prefix 2)
+  (corfu-auto-delay 0.0)
+  (corfu-quit-at-boundary 'separator)
+  (corfu-echo-documentation 0.25)
+  :bind (:map corfu-map
+              ("M-SPC" . corfu-insert-separator)
+              ("TAB" . corfu-next)
+              ([tab] . corfu-next)
+              ("C-n" . corfu-next)
+              ("C-j" . corfu-next)
+              ("S-TAB" . corfu-previous)
+              ([backtab] . corfu-previous)
+              ("C-p" . corfu-previous)
+              ("C-k" . corfu-previous)
+              ("S-<return>" . corfu-insert))
+  :init
+  (global-corfu-mode)
+  (corfu-history-mode)
+  :config
+  (add-hook 'eshell-mode-hook
+            (lambda () (setq-local corfu-quit-at-boundary t
+                                   corfu-quit-not-match t
+                                   corfu-auto nil)
+              (corfu-mode))))
 
-(use-package yasnippet-snippets
-  :after yasnippet)
+(use-package orderless
+  :init
+  ;; Tune the global completion style settings to your liking!
+  ;; This affects the minibuffer and non-lsp completion at point.
+  (setq completion-styles '(orderless partial-completion basic)
+        completion-category-defaults nil
+        completion-category-overrides nil))
 
 (add-to-list 'exec-path (expand-file-name "./etc/python-venv/bin" user-emacs-directory))
 
-(use-package lsp-bridge
-  :straight '(lsp-bridge :type git :host github :repo "manateelazycat/lsp-bridge"
-                         :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
-                         :build (:not compile))
-  :bind
-  (:map evil-normal-state-map
-        ("K" . lsp-bridge-peek)
-        ("J" . lsp-bridge-peek-through))
+(use-package lsp-mode
+  :diminish
+  :preface
+  (setq read-process-output-max (* 1024 1024)) ; 1MB
+  (setenv "LSP_USE_PLISTS" "true")
+  :custom
+  (lsp-completion-provider :none)
   :init
-  (global-lsp-bridge-mode)
+  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+  (setq lsp-keymap-prefix "C-c l")
+  (defun emaconf/lsp-mode-setup-completion ()
+    (setf (alist-get 'styles (alist-get 'lsp-capf completions-category-defaults))
+          '(orderless)))
+  :bind (
+         :map lsp-mode-map
+         ("C-c C-d" . lsp-describe-thing-at-point)
+         ([remap xref-find-definitions] . lsp-find-definition)
+         ([remap xref-find-references] . lsp-find-references)
+         :map evil-normal-state-map
+         ("gh" . lsp-describe-thing-at-point))
+  :hook
+  (lsp-mode . lsp-enable-which-key-integration)
+  (lsp-completion-mode . emaconf/lsp-mode-setup-completion)
+  :commands lsp
   :config
-  (setq lsp-bridge-python-command (expand-file-name "./etc/python-venv/bin/python3" user-emacs-directory)))
+  (setq lsp-idle-delay 0.5
+        lsp-enable-symbol-highlighting t
+        lsp-enable-snippet nil))
 
-"pip3 install -U jedi-language-server
-pip3 install -U ruff-lsp"
+(use-package lsp-ui
+  :commands lsp-ui-mode
+  :bind (
+         :map evil-normal-state-map
+         ("gd" . lsp-ui-peek-find-definitions)
+         ("gr" . lsp-ui-peek-find-references))
+  :config (setq lsp-ui-sideline-show-hover t
+                lsp-ui-sideline-delay 0.5
+                lsp-ui-doc-delay 5
+                lsp-ui-sideline-ignore-duplicates t
+                lsp-ui-doc-position 'bottom
+                lsp-ui-doc-alignment 'frame
+                lsp-ui-doc-header nil
+                lsp-ui-doc-include-signature t
+                lsp-ui-doc-use-childframe t))
 
-(setq lsp-bridge-python-lsp-server "jedi")
-(setq lsp-bridge-python-multi-lsp-server "jedi_ruff")
+(use-package lsp-treemacs
+  :after lsp)
+
+(use-package lsp-ivy
+  :after lsp)
+
+(use-package dap-mode
+  ;; Uncomment the config below if you want all UI panes to be hidden by default!
+  ;; :custom
+  ;; (lsp-enable-dap-auto-configure nil)
+  ;; :config
+  ;; (dap-ui-mode 1)
+  :commands dap-debug
+  :config
+  ;; Set up Node debugging
+  (require 'dap-node)
+  (dap-node-setup) ;; Automatically installs Node debug adapter if needed
+
+  ;; Bind `C-c l d` to `dap-hydra` for easy access
+  (general-define-key
+   :keymaps 'lsp-mode-map
+   :prefix lsp-keymap-prefix
+   "d" '(dap-hydra t :wk "debugger")))
+
+(use-package lsp-pyright
+:ensure t
+:hook (python-mode . (lambda ()
+                        (require 'lsp-pyright)
+                        (lsp-deferred))))
+
+(setq python-shell-interpreter-args "-i -X utf-8")
+
+(use-package pyvenv
+  :demand t
+  :after python-mode
+  :config
+  (setq pyvenv-workon "emacs")
+  (pyvenv-tracking-mode 1))
 
 (use-package typescript-mode
   :mode "\\.ts\\'"
