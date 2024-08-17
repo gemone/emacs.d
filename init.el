@@ -510,7 +510,9 @@
 ;; - https://magit.vc/manual/forge/Token-Creation.html#Token-Creation
 ;; - https://magit.vc/manual/ghub/Getting-Started.html#Getting-Started
 (use-package forge
-  :after magit)
+  :after magit
+  :init
+  (setq forge-add-default-binding nil))
 
 (use-package evil-nerd-commenter
   :diminish
@@ -661,19 +663,17 @@
    "d" '(dap-hydra t :wk "debugger")))
 
 (use-package lsp-pyright
-:ensure t
-:hook (python-mode . (lambda ()
-                        (require 'lsp-pyright)
-                        (lsp-deferred))))
+  :ensure t
+  :hook (python-mode . (lambda ()
+                         (require 'lsp-pyright)
+                         (lsp-deferred))))
 
-(setq python-shell-interpreter-args "-i -X utf-8")
+(setq python-shell-interpreter-args "-c exec('__import__(\\'readline\\')') -i -i -X utf-8")
 
-(use-package pyvenv
-  :demand t
-  :after python-mode
-  :config
-  (setq pyvenv-workon "emacs")
-  (pyvenv-tracking-mode 1))
+(use-package elpy
+  :ensure t
+  :init
+  (elpy-enable))
 
 (use-package typescript-mode
   :mode "\\.ts\\'"

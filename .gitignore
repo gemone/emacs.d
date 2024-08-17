@@ -13,3 +13,5 @@ var/
 
 .cache
 venv
+
+elpy/
