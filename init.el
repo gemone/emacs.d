@@ -8,6 +8,15 @@
 
 (add-hook 'org-mode-hook (lambda () (add-hook 'after-save-hook #'emaconf/org-babel-tangle)))
 
+(with-eval-after-load 'org
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((emacs-lisp . t)
+     (shell . t)
+     (python . t)))
+
+  (push '("conf-unix" . conf-unix) org-src-lang-modes))
+
 (defconst *is-mac* (string-equal system-type "darwin"))
 (defconst *is-linux* (string-equal system-type "gnu/linux"))
 (defconst *is-win* (string-equal system-type "windows-nt"))
@@ -175,6 +184,10 @@
 (load-theme 'modus-vivendi t)
 ;; (load-theme 'modus-operandi t)
 
+(use-package dracula-theme
+  :init
+  (load-theme 'dracula t))
+
 (use-package nerd-icons
   ;; :custom
   ;; The Nerd Font you want to use in GUI
@@ -203,8 +216,6 @@
 
   (emaconf/leader-keys
     "t"  '(:ignore t :which-key "toggles")
-    "tc" '(counsel-load-theme :which-key "choose theme")
-    "tt" '(modus-themes-toggle :which-key "change modus theme")
     "fde" '(lambda () (interactive) (find-file (expand-file-name "~/.config/emacs/README.org")))))
 
 (use-package evil
@@ -446,22 +457,6 @@
 
 (treemacs-start-on-boot)
 
-(defun emaconf/org-font-setup ()
-  ;; Replace list hyphen with dot
-  (font-lock-add-keywords 'org-mode
-                          '(("^ *\\([-]\\) "
-                             (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
-
-  ;; Set faces for heading levels
-  (dolist (face '((org-level-1 . 1.2)
-                  (org-level-2 . 1.1)
-                  (org-level-3 . 1.05)
-                  (org-level-4 . 1.0)
-                  (org-level-5 . 1.1)
-                  (org-level-6 . 1.1)
-                  (org-level-7 . 1.1)
-                  (org-level-8 . 1.1)))))
-
 (defun emaconf/org-mode-setup ()
   (org-indent-mode)
   (variable-pitch-mode 1)
@@ -472,9 +467,7 @@
   :commands (org-capture org-agenda)
   :hook (org-mode . emaconf/org-mode-setup)
   :config
-  (setq org-ellipsis " ▾")
-
-  (emaconf/org-font-setup))
+  (setq org-ellipsis " ▾"))
 
 (use-package org-bullets
   :hook (org-mode . org-bullets-mode)
@@ -488,15 +481,6 @@
 
 (use-package visual-fill-column
   :hook (org-mode . emaconf/org-mode-visual-fill))
-
-(with-eval-after-load 'org
-  (org-babel-do-load-languages
-   'org-babel-load-languages
-   '((emacs-lisp . t)
-     (shell . t)
-     (python . t)))
-
-  (push '("conf-unix" . conf-unix) org-src-lang-modes))
 
 (use-package markdown-mode
   :ensure t

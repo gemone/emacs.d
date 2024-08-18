@@ -19,6 +19,19 @@ This snippet adds a hook to =org-mode= buffers so that =emaconf/org-babel-tangle
         (org-babel-tangle))))
 
   (add-hook 'org-mode-hook (lambda () (add-hook 'after-save-hook #'emaconf/org-babel-tangle)))
+        #+end_src
+
+** Babel Languages
+
+#+begin_src emacs-lisp
+  (with-eval-after-load 'org
+    (org-babel-do-load-languages
+     'org-babel-load-languages
+     '((emacs-lisp . t)
+       (shell . t)
+       (python . t)))
+
+    (push '("conf-unix" . conf-unix) org-src-lang-modes))
 #+end_src
 
 * Variable
@@ -333,12 +346,22 @@ Use [[https://protesilaos.com/emacs/fontaine][fontaine]] to custom fonts.
 
 ** Theme
 
+Set basic theme =modus=
+
 #+begin_src emacs-lisp
   (setq modus-themes-italic-constructs t
         modus-themes-bold-constructs t)
 
   (load-theme 'modus-vivendi t)
   ;; (load-theme 'modus-operandi t)
+#+end_src
+
+Change to =dracula=
+
+#+begin_src emacs-lisp
+  (use-package dracula-theme
+    :init
+    (load-theme 'dracula t))
 #+end_src
 
 ** Betther Modeline
@@ -382,8 +405,6 @@ This configuration uses [[https://evil.readthedocs.io/en/latest/index.html][evil
 
     (emaconf/leader-keys
       "t"  '(:ignore t :which-key "toggles")
-      "tc" '(counsel-load-theme :which-key "choose theme")
-      "tt" '(modus-themes-toggle :which-key "change modus theme")
       "fde" '(lambda () (interactive) (find-file (expand-file-name "~/.config/emacs/README.org")))))
 
   (use-package evil
@@ -731,28 +752,6 @@ Dired is a built-in file manager for Emacs that does some pretty amazing things!
 
 [[https://orgmode.org/][Org Mode]] is one of the hallmark features of Emacs.  It is a rich document editor, project planner, task and time tracker, blogging engine, and literate coding utility all wrapped up in one package.
 
-** Better Font Faces
-
-The =emaconf/org-font-setup= function configures various text faces to tweak the sizes of headings and use variable width fonts in most cases so that it looks more like we're editing a document in =org-mode=.  We switch back to fixed width (monospace) fonts for code blocks and tables so that they display correctly.
-
-#+begin_src emacs-lisp
-  (defun emaconf/org-font-setup ()
-    ;; Replace list hyphen with dot
-    (font-lock-add-keywords 'org-mode
-                            '(("^ *\\([-]\\) "
-                               (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
-
-    ;; Set faces for heading levels
-    (dolist (face '((org-level-1 . 1.2)
-                    (org-level-2 . 1.1)
-                    (org-level-3 . 1.05)
-                    (org-level-4 . 1.0)
-                    (org-level-5 . 1.1)
-                    (org-level-6 . 1.1)
-                    (org-level-7 . 1.1)
-                    (org-level-8 . 1.1)))))
-#+end_src
-
 ** Basic Config
 
 #+begin_src emacs-lisp
@@ -766,9 +765,7 @@ The =emaconf/org-font-setup= function configures various text faces to tweak the
     :commands (org-capture org-agenda)
     :hook (org-mode . emaconf/org-mode-setup)
     :config
-    (setq org-ellipsis " ▾")
-
-    (emaconf/org-font-setup))
+    (setq org-ellipsis " ▾"))
 #+end_src
 
 *** Nicer Heading Bullets
@@ -798,18 +795,6 @@ We use [[https://github.com/joostkremers/visual-fill-column][visual-fill-column]
 
 #+end_src
 
-** Babel Languages
-
-#+begin_src emacs-lisp
-  (with-eval-after-load 'org
-    (org-babel-do-load-languages
-     'org-babel-load-languages
-     '((emacs-lisp . t)
-       (shell . t)
-       (python . t)))
-
-    (push '("conf-unix" . conf-unix) org-src-lang-modes))
-#+end_src
 
 * Markdown Mode
 
@@ -1070,7 +1055,7 @@ Try these commands with =M-x=:
 
 #+NAME: python-lsp
 #+begin_src emacs-lisp :tangle no
-    "ruff-lsp pyright jupyterlab jupyter-console"
+  "ruff-lsp pyright jupyterlab jupyter-console"
 #+end_src
 
 #+begin_src shell :noweb yes
