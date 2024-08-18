@@ -15,3 +15,6 @@ var/
 venv
 
 elpy/
+
+# 忽略 local 文件
+init.local.el

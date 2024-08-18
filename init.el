@@ -21,6 +21,10 @@
 (defconst *is-linux* (string-equal system-type "gnu/linux"))
 (defconst *is-win* (string-equal system-type "windows-nt"))
 
+(setq init-local-file (locate-user-emacs-file "init.local.el"))
+(when (file-exists-p init-local-file)
+  (load init-local-file))
+
 (add-to-list 'exec-path (expand-file-name "./etc/python-venv/bin" user-emacs-directory))
 
 (add-to-list 'exec-path (expand-file-name "./etc/npm/.bin" user-emacs-directory))
@@ -667,3 +671,12 @@
   :hook (typescript-mode . lsp-deferred)
   :config
   (setq typescript-indent-level 2))
+
+(defvar enable-leetcode nil)
+
+(when enable-leetcode
+  (use-package leetcode))
+
+(setq custom-file (locate-user-emacs-file "custom.el"))
+(when (file-exists-p custom-file)
+  (load custom-file))

@@ -44,6 +44,16 @@ You can define variable here.
   (defconst *is-win* (string-equal system-type "windows-nt"))
 #+end_src
 
+** Local init
+
+Before other config.
+
+#+begin_src emacs-lisp
+  (setq init-local-file (locate-user-emacs-file "init.local.el"))
+  (when (file-exists-p init-local-file)
+    (load init-local-file))
+#+end_src
+
 ** Python venv
 
 - Linux: =bash setup.sh=
@@ -795,7 +805,6 @@ We use [[https://github.com/joostkremers/visual-fill-column][visual-fill-column]
 
 #+end_src
 
-
 * Markdown Mode
 
 #+begin_src emacs-lisp
@@ -1134,4 +1143,27 @@ For shell
     :hook (typescript-mode . lsp-deferred)
     :config
     (setq typescript-indent-level 2))
+#+end_src
+
+* Learning
+
+** leetcode
+
+#+begin_src emacs-lisp
+  (defvar enable-leetcode nil)
+#+end_src
+
+#+begin_src emacs-lisp
+  (when enable-leetcode
+    (use-package leetcode))
+#+end_src
+
+* Custom
+
+After other config.
+
+#+begin_src emacs-lisp
+  (setq custom-file (locate-user-emacs-file "custom.el"))
+  (when (file-exists-p custom-file)
+    (load custom-file))
 #+end_src
