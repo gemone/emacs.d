@@ -668,12 +668,9 @@
                          (require 'lsp-pyright)
                          (lsp-deferred))))
 
-(setq python-shell-interpreter-args "-c exec('__import__(\\'readline\\')') -i -i -X utf-8")
-
-(use-package elpy
-  :ensure t
+(use-package jupyter
   :init
-  (elpy-enable))
+  (setq jupyter-repl-echo-eval-p t))
 
 (use-package typescript-mode
   :mode "\\.ts\\'"

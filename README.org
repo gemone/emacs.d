@@ -1065,19 +1065,10 @@ Try these commands with =M-x=:
                            (lsp-deferred))))
 #+end_src
 
-For run-python, use =utf-8= locale.
-
 #+begin_src emacs-lisp
-  (setq python-shell-interpreter-args "-c exec('__import__(\\'readline\\')') -i -i -X utf-8")
-#+end_src
-
-Elpy is an Emacs package to bring powerful Python editing to Emacs. It combines and configures a number of other packages, both written in Emacs Lisp as well as Python. Elpy is fully documented at Readthedocs.
-
-#+begin_src emacs-lisp
-  (use-package elpy
-    :ensure t
-    :init
-    (elpy-enable))
+      (use-package jupyter
+        :init
+        (setq jupyter-repl-echo-eval-p t))
 #+end_src
 
 *** Typescript
