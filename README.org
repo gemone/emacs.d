@@ -31,6 +31,70 @@ You can define variable here.
   (defconst *is-win* (string-equal system-type "windows-nt"))
 #+end_src
 
+** Python venv
+
+- Linux: =bash setup.sh=
+- Windows: =.\setup.ps1=
+
+#+NAME: python-venv
+#+begin_src emacs-lisp :tangle no
+  "./etc/python-venv"
+#+end_src
+
+#+NAME: add-venv
+#+begin_src emacs-lisp :tangle no :noweb yes
+  "python3 -m venv <<python-venv()>>"
+#+end_src
+
+For Linux:
+
+#+begin_src shell :noweb yes
+  # For Linux
+  <<add-venv()>>
+  source <<python-venv()>>/bin/activate
+#+end_src
+
+For Windows:
+
+#+begin_src powershell :noweb yes
+  <<add-venv()>>
+  <<python-venv()>>/Scripts/Activate.ps1
+#+end_src
+
+Add venv python to exec-path.
+
+#+begin_src emacs-lisp :noweb yes
+  (add-to-list 'exec-path (expand-file-name "<<python-venv()>>/bin" user-emacs-directory))
+#+end_src
+
+=pip3 install=
+
+#+NAME: pip-install
+#+begin_src emacs-lisp :tangle no :var package=""
+  (concat "pip3 install -U " package)
+#+end_src
+
+** Node prefix
+
+=npm install= with prefix.
+
+#+NAME: bash-npm-install
+#+begin_src emacs-lisp :tangle no :var package=""
+  (concat "[[ -e `which npm` ]] && npm install --prefix ./etc/npm " package)
+#+end_src
+
+#+NAME: pwsh-npm-install
+#+begin_src emacs-lisp :tangle no :var package=""
+  (concat "if (Test-Path (where.exe npm)) {
+    npm install --prefix ./etc/npm "  package
+    "
+  }")
+#+end_src
+
+#+begin_src emacs-lisp
+  (add-to-list 'exec-path (expand-file-name "./etc/npm/.bin" user-emacs-directory))
+#+end_src
+
 * Locale
 
 From [[https://github.com/purcell/emacs.d/blob/master/lisp/init-locales.el][purcell/emacs.d/lisp/init-locales.el]]
@@ -891,43 +955,6 @@ Emacs' built in commenting functionality =comment-dwim= (usually bound to =M-;=)
 
 *** IDE Features with lsp-mode
 
-**** Setup ENV
-
-- Linux: =bash setup.sh=
-- Windows: =.\setup.ps1=
-
-#+NAME: python-venv
-#+begin_src emacs-lisp :tangle no
-  "./etc/python-venv"
-#+end_src
-
-#+NAME: add-venv
-#+begin_src emacs-lisp :tangle no :noweb yes
-  "python3 -m venv <<python-venv()>>
-  pip3 install -U readline"
-#+end_src
-
-For Linux:
-
-#+begin_src shell :noweb yes
-  # For Linux
-  <<add-venv()>>
-  source <<python-venv()>>/bin/activate
-#+end_src
-
-For Windows:
-
-#+begin_src powershell :noweb yes
-  <<add-venv()>>
-  <<python-venv()>>/Scripts/Activate.ps1
-#+end_src
-
-Add venv python to exec-path.
-
-#+begin_src emacs-lisp :noweb yes
-  (add-to-list 'exec-path (expand-file-name "<<python-venv()>>/bin" user-emacs-directory))
-#+end_src
-
 **** lsp-mode
 
 Install [[https://github.com/emacs-lsp/lsp-mode][lsp-mode]]. lsp-mode is already suitable for the current usage scenario and has multi terminal support.
@@ -1041,20 +1068,17 @@ Try these commands with =M-x=:
 
 *** Python
 
-#+NAME: install-python-lsp
+#+NAME: python-lsp
 #+begin_src emacs-lisp :tangle no
-  "pip3 install -U ruff-lsp
-  pip3 install -U pyright
-  pip3 install -U jupyterlab
-  pip3 install -U jupyter-console"
+    "ruff-lsp pyright jupyterlab jupyter-console"
 #+end_src
 
 #+begin_src shell :noweb yes
-  <<install-python-lsp()>>
+  <<pip-install(package=python-lsp)>>
 #+end_src
 
 #+begin_src powershell :noweb yes
-  <<install-python-lsp()>>
+  <<pip-install(package=python-lsp)>>
 #+end_src
 
 #+begin_src emacs-lisp :noweb yes
@@ -1071,7 +1095,53 @@ Try these commands with =M-x=:
     (setq jupyter-repl-echo-eval-p t))
 #+end_src
 
-*** Typescript
+*** Shell
+
+**** Powershell
+
+#+begin_src emacs-lisp
+  (use-package powershell)
+#+end_src
+
+**** Bash
+
+Install LSP client.
+
+#+NAME: bash-lsp
+#+begin_src emacs-lisp :tangle no
+  "bash-language-server"
+#+end_src
+
+#+begin_src shell :noweb yes
+  <<bash-npm-install(package=bash-lsp)>>
+#+end_src
+
+#+begin_src powershell :noweb yes
+  <<pwsh-npm-install(package=bash-lsp)>>
+#+end_src
+
+Config =lsp-mode=
+
+#+begin_src emacs-lisp
+  (add-hook 'shell-mode (lambda() (lsp-deferred)))
+#+end_src
+
+*** JavaScript/Typescript
+
+#+NAME: ts-lsp
+#+begin_src emacs-lisp :tangle no
+  "typescript-language-server typescript"
+#+end_src
+
+For shell
+
+#+begin_src shell :noweb yes
+  <<bash-npm-install(package=ts-lsp)>>
+#+end_src
+
+#+begin_src powershell :noweb yes
+  <<pwsh-npm-install(package=ts-lsp)>>
+#+end_src
 
 #+begin_src emacs-lisp
   (use-package typescript-mode

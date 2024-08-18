@@ -12,6 +12,10 @@
 (defconst *is-linux* (string-equal system-type "gnu/linux"))
 (defconst *is-win* (string-equal system-type "windows-nt"))
 
+(add-to-list 'exec-path (expand-file-name "./etc/python-venv/bin" user-emacs-directory))
+
+(add-to-list 'exec-path (expand-file-name "./etc/npm/.bin" user-emacs-directory))
+
 (defun sanityinc/locale-var-encoding (v)
   "Return the encoding portion of the locale string V, or nil if missing."
   (when v
@@ -592,8 +596,6 @@
         completion-category-defaults nil
         completion-category-overrides nil))
 
-(add-to-list 'exec-path (expand-file-name "./etc/python-venv/bin" user-emacs-directory))
-
 (use-package lsp-mode
   :diminish
   :preface
@@ -671,6 +673,10 @@
 (use-package jupyter
   :init
   (setq jupyter-repl-echo-eval-p t))
+
+(use-package powershell)
+
+(add-hook 'shell-mode (lambda() (lsp-deferred)))
 
 (use-package typescript-mode
   :mode "\\.ts\\'"
