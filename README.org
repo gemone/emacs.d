@@ -1066,9 +1066,9 @@ Try these commands with =M-x=:
 #+end_src
 
 #+begin_src emacs-lisp
-      (use-package jupyter
-        :init
-        (setq jupyter-repl-echo-eval-p t))
+  (use-package jupyter
+    :init
+    (setq jupyter-repl-echo-eval-p t))
 #+end_src
 
 *** Typescript
