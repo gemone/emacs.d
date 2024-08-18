@@ -97,6 +97,13 @@ Add venv python to exec-path.
   (concat "pip3 install -U " package)
 #+end_src
 
+=shell-interpreter=, use =pyvenv= to handle
+
+#+begin_src emacs-lisp :noweb yes
+  (setenv "DEFAULT_PYTHON_ENV" (expand-file-name "<<python-venv()>>" user-emacs-directory))
+  (setenv "PYTHONIOENCODING" "utf-8")
+#+end_src
+
 ** Node prefix
 
 =npm install= with prefix.
@@ -116,6 +123,13 @@ Add venv python to exec-path.
 
 #+begin_src emacs-lisp
   (add-to-list 'exec-path (expand-file-name "./etc/npm/.bin" user-emacs-directory))
+#+end_src
+
+** Cargo/Rust
+
+#+begin_src emacs-lisp
+  (when (file-exists-p "~/.cargo/bin/cargo")
+    (add-to-list 'exec-path "~/.cargo/bin"))
 #+end_src
 
 * Locale
@@ -849,6 +863,13 @@ Emacs' built in commenting functionality =comment-dwim= (usually bound to =M-;=)
            ("gcc" . evilnc-comment-or-uncomment-lines)))
 #+end_src
 
+
+** Revert
+
+#+begin_src emacs-lisp
+  (global-auto-revert-mode 1)
+#+end_src
+
 ** Pair mode
 
 #+begin_src emacs-lisp
@@ -1089,6 +1110,26 @@ Try these commands with =M-x=:
     (setq jupyter-repl-echo-eval-p t))
 #+end_src
 
+#+begin_src emacs-lisp
+  (use-package pyvenv
+    :config
+    (pyvenv-mode t)
+    (pyvenv-workon (getenv "DEFAULT_PYTHON_ENV"))
+
+    ;; Set correct Python interpreter
+    (setq pyvenv-post-activate-hooks
+          (list (lambda ()
+                  (setq python-shell-interpreter (concat pyvenv-virtual-env "bin/python3")))))
+    (setq pyvenv-post-deactivate-hooks
+          (list (lambda ()
+                  (setq python-shell-interpreter "python3")))))
+
+  (use-package auto-virtualenv
+    :after pyvenv
+    :hook
+    (python-mode . auto-virtualenv-set-virtualenv))
+#+end_src
+
 *** Shell
 
 **** Powershell
@@ -1147,7 +1188,23 @@ For shell
 
 * Learning
 
-** leetcode
+** [[https://github.com/kaiwk/leetcode.el][leetcode.el]]
+
+You can add =(setq enable-leetcode t)= in =init.local.el= to add =leetcode.el= for you emacs.
+
+You will find leetcode-cli config in =~/.leetcode/leetcode.toml=.
+
+please install [[https://github.com/clearloop/leetcode-cli][=leetcode-cli=]]
+
+#+begin_src shell :tangle no
+  cargo install leetcode-cli
+#+end_src
+
+#+begin_src toml
+  [code]
+  editor = 'cat'
+  lang = 'python'
+#+end_src
 
 #+begin_src emacs-lisp
   (defvar enable-leetcode nil)
@@ -1155,7 +1212,15 @@ For shell
 
 #+begin_src emacs-lisp
   (when enable-leetcode
-    (use-package leetcode))
+    (message "You need `npm install -g leetcode-cli`.")
+    (use-package leetcode
+      :straight (
+  	       :host github
+  	       :repo "ginqi7/leetcode-emacs"
+  	       :branch "master"
+  	       :build (:not compile))
+      :custom
+      (leetcode-language "python3")))
 #+end_src
 
 * Custom

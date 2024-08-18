@@ -27,7 +27,13 @@
 
 (add-to-list 'exec-path (expand-file-name "./etc/python-venv/bin" user-emacs-directory))
 
+(setenv "DEFAULT_PYTHON_ENV" (expand-file-name "./etc/python-venv" user-emacs-directory))
+(setenv "PYTHONIOENCODING" "utf-8")
+
 (add-to-list 'exec-path (expand-file-name "./etc/npm/.bin" user-emacs-directory))
+
+(when (file-exists-p "~/.cargo/bin/cargo")
+  (add-to-list 'exec-path "~/.cargo/bin"))
 
 (defun sanityinc/locale-var-encoding (v)
   "Return the encoding portion of the locale string V, or nil if missing."
@@ -512,6 +518,8 @@
          :map evil-normal-state-map
          ("gcc" . evilnc-comment-or-uncomment-lines)))
 
+(global-auto-revert-mode 1)
+
 (use-package smartparens
   :hook
   (prog-mode . smartparens-mode) 
@@ -662,6 +670,24 @@
   :init
   (setq jupyter-repl-echo-eval-p t))
 
+(use-package pyvenv
+  :config
+  (pyvenv-mode t)
+  (pyvenv-workon (getenv "DEFAULT_PYTHON_ENV"))
+
+  ;; Set correct Python interpreter
+  (setq pyvenv-post-activate-hooks
+        (list (lambda ()
+                (setq python-shell-interpreter (concat pyvenv-virtual-env "bin/python3")))))
+  (setq pyvenv-post-deactivate-hooks
+        (list (lambda ()
+                (setq python-shell-interpreter "python3")))))
+
+(use-package auto-virtualenv
+  :after pyvenv
+  :hook
+  (python-mode . auto-virtualenv-set-virtualenv))
+
 (use-package powershell)
 
 (add-hook 'shell-mode (lambda() (lsp-deferred)))
@@ -675,7 +701,15 @@
 (defvar enable-leetcode nil)
 
 (when enable-leetcode
-  (use-package leetcode))
+  (message "You need `npm install -g leetcode-cli`.")
+  (use-package leetcode
+    :straight (
+	       :host github
+	       :repo "ginqi7/leetcode-emacs"
+	       :branch "master"
+	       :build (:not compile))
+    :custom
+    (leetcode-language "python3")))
 
 (setq custom-file (locate-user-emacs-file "custom.el"))
 (when (file-exists-p custom-file)
