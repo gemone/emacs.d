@@ -25,16 +25,19 @@
 (when (file-exists-p init-local-file)
   (load init-local-file))
 
+(let ((venv '"./etc/python-venv
+"))
 (add-to-list 'exec-path (expand-file-name
-			 (cond (*is-win* "./etc/python-venv
-			 (cond (*is-win* "/Scripts")
-			       (t "./etc/python-venv
-			       (t "/bin"))
-			 user-emacs-directory))
+			 (concat venv (cond (*is-win* "/Scripts")
+					    (t "/bin")))
+		       user-emacs-directory))
+)
 
-(setenv "DEFAULT_PYTHON_ENV" (expand-file-name "./etc/python-venv
-(setenv "DEFAULT_PYTHON_ENV" (expand-file-name "" user-emacs-directory))
+(let ((venv '"./etc/python-venv
+"))
+(setenv "DEFAULT_PYTHON_ENV" (expand-file-name venv user-emacs-directory))
 (setenv "PYTHONIOENCODING" "utf-8")
+)
 
 (add-to-list 'exec-path (expand-file-name "./etc/npm/.bin" user-emacs-directory))
 

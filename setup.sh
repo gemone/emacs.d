@@ -26,7 +26,7 @@ function install_zls() {
     current_arch=$(uname -m)
     current_system=$(uname -s)
     version=$(zig version)
-    
+
     # I don't known how to define macos system. sorry.
     # please use bash to execute
     wget https://github.com/zigtools/zls/releases/download/${version}/zls-${current_arch,,}-${current_system,,}.tar.xz -O ${download_file}
