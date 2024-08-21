@@ -38,6 +38,8 @@
 (when (file-exists-p "~/.cargo/bin/cargo")
   (add-to-list 'exec-path "~/.cargo/bin"))
 
+(add-to-list 'exec-path (expand-file-name "./etc/bin" user-emacs-directory))
+
 (defun sanityinc/locale-var-encoding (v)
   "Return the encoding portion of the locale string V, or nil if missing."
   (when v
@@ -700,6 +702,9 @@
   :hook (typescript-mode . lsp-deferred)
   :config
   (setq typescript-indent-level 2))
+
+(use-package zig-mode
+  :hook (zig-mode . lsp-deferred))
 
 (setq custom-file (locate-user-emacs-file "custom.el"))
 (when (file-exists-p custom-file)

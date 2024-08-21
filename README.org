@@ -38,6 +38,8 @@ This snippet adds a hook to =org-mode= buffers so that =emaconf/org-babel-tangle
 
 You can define variable here.
 
+** Define System type
+
 #+begin_src emacs-lisp
   (defconst *is-mac* (string-equal system-type "darwin"))
   (defconst *is-linux* (string-equal system-type "gnu/linux"))
@@ -57,7 +59,7 @@ Before other config.
 ** Python venv
 
 - Linux: =bash setup.sh=
-- Windows: =.\setup.ps1=
+- Windows: =pwsh setup.ps1=
 
 #+NAME: python-venv
 #+begin_src emacs-lisp :tangle no
@@ -133,6 +135,20 @@ Add venv python to exec-path.
 #+begin_src emacs-lisp
   (when (file-exists-p "~/.cargo/bin/cargo")
     (add-to-list 'exec-path "~/.cargo/bin"))
+#+end_src
+
+** For other bin
+
+#+begin_src shell
+  mkdir ./etc/bin
+#+end_src
+
+#+begin_src powershell
+  mkdir ./etc/bin
+#+end_src
+
+#+begin_src emacs-lisp
+  (add-to-list 'exec-path (expand-file-name "./etc/bin" user-emacs-directory))
 #+end_src
 
 * Locale
@@ -1187,6 +1203,70 @@ For shell
     :hook (typescript-mode . lsp-deferred)
     :config
     (setq typescript-indent-level 2))
+#+end_src
+
+*** Zig
+
+Install [[https://github.com/zigtools/zls/wiki/Installation][=zls=]] here.
+
+For Linux System, please use =bash setup.sh=.
+
+#+begin_src shell
+  function install_zls() {
+      [[ -e `which zig` ]] || return
+      [[ ! -d .cache/download ]] && mkdir .cache/download -p
+      download_file=.cache/download/zls.tar.xz
+      bin_path=./etc/bin/
+
+      current_arch=$(uname -m)
+      current_system=$(uname -s)
+      version=$(zig version)
+      
+      # I don't known how to define macos system. sorry.
+      # please use bash to execute
+      wget https://github.com/zigtools/zls/releases/download/${version}/zls-${current_arch,,}-${current_system,,}.tar.xz -O ${download_file}
+      tar xvf ${download_file} --directory ${bin_path}
+      chmod +x ${bin_path}/zls
+      rm -rf ${download_file}
+      mkdir -p ./var/zls
+      mv ${bin_path}/{LICENSE,README.md} ./var/zls
+  }
+
+  install_zls
+#+end_src
+
+For Windows System.
+
+#+begin_src powershell
+  function Install-ZLS {
+      $dowload_path='.cache/download'
+      del $download_path -Recurse -Force -Confirm:$false
+      mkdir $download_path
+      if (Test-Path (where.exe zig)) {
+  	$bin_path="./etc/bin"
+  	$var_path="./var/zls"
+  	del $var_path -Recurse -Force -Confirm:$false
+  	del $bin_path/zls.exe -Recurse -Force -Confirm:$false
+  	mkdir $var_path
+
+  	$arch=Switch ([intptr]::Size) {
+              4 {"x86"}
+              8 {"x86_64"}      
+  	}
+  	$version=(zig version)
+  	$url="https://github.com/zigtools/zls/releases/download/$version/zls-$arch-windows.zip"
+  	$dest="./.cache/download/zls.zip"
+  	Invoke-WebRequest -Uri $url -OutFile $dest
+  	Expand-Archive $dest -DestinationPath $var_path -Force
+  	mv $var_path/zls.exe $bin_path
+      }
+      del $download_path -Recurse -Force -Confirm:$false
+  }
+#+end_src
+
+#+begin_src emacs-lisp
+  (use-package zig-mode
+    :hook (zig-mode . lsp-deferred))
 #+end_src
 
 * Custom
