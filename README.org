@@ -87,7 +87,10 @@ For Windows:
 Add venv python to exec-path.
 
 #+begin_src emacs-lisp :noweb yes
-  (add-to-list 'exec-path (expand-file-name "<<python-venv()>>/bin" user-emacs-directory))
+  (add-to-list 'exec-path (expand-file-name
+  			 (cond (*is-win* "<<python-venv()>>/Scripts")
+  			       (t "<<python-venv()>>/bin"))
+  			 user-emacs-directory))
 #+end_src
 
 =pip3 install=
@@ -1184,43 +1187,6 @@ For shell
     :hook (typescript-mode . lsp-deferred)
     :config
     (setq typescript-indent-level 2))
-#+end_src
-
-* Learning
-
-** [[https://github.com/kaiwk/leetcode.el][leetcode.el]]
-
-You can add =(setq enable-leetcode t)= in =init.local.el= to add =leetcode.el= for you emacs.
-
-You will find leetcode-cli config in =~/.leetcode/leetcode.toml=.
-
-please install [[https://github.com/clearloop/leetcode-cli][=leetcode-cli=]]
-
-#+begin_src shell :tangle no
-  cargo install leetcode-cli
-#+end_src
-
-#+begin_src toml
-  [code]
-  editor = 'cat'
-  lang = 'python'
-#+end_src
-
-#+begin_src emacs-lisp
-  (defvar enable-leetcode nil)
-#+end_src
-
-#+begin_src emacs-lisp
-  (when enable-leetcode
-    (message "You need `npm install -g leetcode-cli`.")
-    (use-package leetcode
-      :straight (
-  	       :host github
-  	       :repo "ginqi7/leetcode-emacs"
-  	       :branch "master"
-  	       :build (:not compile))
-      :custom
-      (leetcode-language "python3")))
 #+end_src
 
 * Custom

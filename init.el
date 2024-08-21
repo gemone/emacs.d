@@ -25,7 +25,10 @@
 (when (file-exists-p init-local-file)
   (load init-local-file))
 
-(add-to-list 'exec-path (expand-file-name "./etc/python-venv/bin" user-emacs-directory))
+(add-to-list 'exec-path (expand-file-name
+			 (cond (*is-win* "./etc/python-venv/Scripts")
+			       (t "./etc/python-venv/bin"))
+			 user-emacs-directory))
 
 (setenv "DEFAULT_PYTHON_ENV" (expand-file-name "./etc/python-venv" user-emacs-directory))
 (setenv "PYTHONIOENCODING" "utf-8")
@@ -697,19 +700,6 @@
   :hook (typescript-mode . lsp-deferred)
   :config
   (setq typescript-indent-level 2))
-
-(defvar enable-leetcode nil)
-
-(when enable-leetcode
-  (message "You need `npm install -g leetcode-cli`.")
-  (use-package leetcode
-    :straight (
-	       :host github
-	       :repo "ginqi7/leetcode-emacs"
-	       :branch "master"
-	       :build (:not compile))
-    :custom
-    (leetcode-language "python3")))
 
 (setq custom-file (locate-user-emacs-file "custom.el"))
 (when (file-exists-p custom-file)
