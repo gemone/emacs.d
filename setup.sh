@@ -8,9 +8,9 @@ git config --global core.autocrlf input
 
 pip3 install -U --trusted-host mirrors.huaweicloud.com -i https://mirrors.huaweicloud.com/repository/pypi/simple ruff-lsp pyright jupyterlab jupyter-console
 
-[[ -e `which npm` ]] && npm install --prefix ./etc/npm --registry=https://registry.npmmirror.com bash-language-server
+[[ -e `which npm` ]] && npm install --global --prefix ./etc/npm --registry=https://registry.npmmirror.com bash-language-server
 
-[[ -e `which npm` ]] && npm install --prefix ./etc/npm --registry=https://registry.npmmirror.com typescript-language-server typescript
+[[ -e `which npm` ]] && npm install --global --prefix ./etc/npm --registry=https://registry.npmmirror.com typescript-language-server typescript eslint
 
 function install_zls() {
     [[ -e `which zig` ]] || return
@@ -34,4 +34,4 @@ function install_zls() {
 
 install_zls
 
-[[ -e `which npm` ]] && npm install --prefix ./etc/npm --registry=https://registry.npmmirror.com vscode-langservers-extracted
+[[ -e `which npm` ]] && npm install --global --prefix ./etc/npm --registry=https://registry.npmmirror.com vscode-langservers-extracted

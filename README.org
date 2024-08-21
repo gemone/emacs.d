@@ -34,6 +34,13 @@ This snippet adds a hook to =org-mode= buffers so that =emaconf/org-babel-tangle
     (push '("conf-unix" . conf-unix) org-src-lang-modes))
 #+end_src
 
+* Function
+
+#+begin_src emacs-lisp
+  (defun executable-exists-p(exe)
+    (f-exists-p (executable-find exe)))
+#+end_src
+
 * Variable
 
 You can define variable here.
@@ -53,7 +60,7 @@ You can define variable here.
 
 #+NAME: npm-install-args
 #+begin_src emacs-lisp :tangle no
-"--prefix ./etc/npm --registry=https://registry.npmmirror.com"
+"--global --prefix ./etc/npm --registry=https://registry.npmmirror.com"
 #+end_src
 
 ** Local init
@@ -137,7 +144,7 @@ Add venv python to exec-path.
 #+end_src
 
 #+begin_src emacs-lisp
-  (add-to-list 'exec-path (expand-file-name "./etc/npm/.bin" user-emacs-directory))
+  (add-to-list 'exec-path (expand-file-name "./etc/npm/bin" user-emacs-directory))
 #+end_src
 
 ** Cargo/Rust
@@ -1024,6 +1031,7 @@ Install [[https://github.com/emacs-lsp/lsp-mode][lsp-mode]]. lsp-mode is already
                 :map evil-normal-state-map
                 ("gh" . lsp-describe-thing-at-point))
     :hook
+    (prog-mode . lsp-deferred)
     (lsp-mode . lsp-enable-which-key-integration)
     (lsp-completion-mode . emaconf/lsp-mode-setup-completion)
     :commands lsp
@@ -1192,7 +1200,7 @@ Config =lsp-mode=
 
 #+NAME: ts-lsp
 #+begin_src emacs-lisp :tangle no
-  "typescript-language-server typescript"
+  "typescript-language-server typescript eslint"
 #+end_src
 
 For shell
@@ -1208,7 +1216,6 @@ For shell
 #+begin_src emacs-lisp
   (use-package typescript-mode
     :mode "\\.ts\\'"
-    :hook (typescript-mode . lsp-deferred)
     :config
     (setq typescript-indent-level 2))
 #+end_src
@@ -1273,8 +1280,8 @@ For Windows System.
 #+end_src
 
 #+begin_src emacs-lisp
-  (use-package zig-mode
-    :hook (zig-mode . lsp-deferred))
+  (when (executable-exists-p "zig")
+    (use-package zig-mode))
 #+end_src
 
 *** HTML/CSS/JSON/ESLint 

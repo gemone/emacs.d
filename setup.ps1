@@ -8,11 +8,11 @@ git config --global core.autocrlf true
 pip3 install -U --trusted-host mirrors.huaweicloud.com -i https://mirrors.huaweicloud.com/repository/pypi/simple ruff-lsp pyright jupyterlab jupyter-console
 
 if (Test-Path (where.exe npm)) {
-  npm install --prefix --prefix ./etc/npm --registry=https://registry.npmmirror.com bash-language-server
+  npm install --prefix --global --prefix ./etc/npm --registry=https://registry.npmmirror.com bash-language-server
 }
 
 if (Test-Path (where.exe npm)) {
-  npm install --prefix --prefix ./etc/npm --registry=https://registry.npmmirror.com typescript-language-server typescript
+  npm install --prefix --global --prefix ./etc/npm --registry=https://registry.npmmirror.com typescript-language-server typescript eslint
 }
 
 function Install-ZLS {
@@ -41,5 +41,5 @@ function Install-ZLS {
 }
 
 if (Test-Path (where.exe npm)) {
-  npm install --prefix --prefix ./etc/npm --registry=https://registry.npmmirror.com vscode-langservers-extracted
+  npm install --prefix --global --prefix ./etc/npm --registry=https://registry.npmmirror.com vscode-langservers-extracted
 }

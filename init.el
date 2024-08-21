@@ -17,6 +17,9 @@
 
   (push '("conf-unix" . conf-unix) org-src-lang-modes))
 
+(defun executable-exists-p(exe)
+  (f-exists-p (executable-find exe)))
+
 (defconst *is-mac* (string-equal system-type "darwin"))
 (defconst *is-linux* (string-equal system-type "gnu/linux"))
 (defconst *is-win* (string-equal system-type "windows-nt"))
@@ -37,7 +40,7 @@
 (setenv "PYTHONIOENCODING" "utf-8")
 )
 
-(add-to-list 'exec-path (expand-file-name "./etc/npm/.bin" user-emacs-directory))
+(add-to-list 'exec-path (expand-file-name "./etc/npm/bin" user-emacs-directory))
 
 (when (file-exists-p "~/.cargo/bin/cargo")
   (add-to-list 'exec-path "~/.cargo/bin"))
@@ -621,6 +624,7 @@
               :map evil-normal-state-map
               ("gh" . lsp-describe-thing-at-point))
   :hook
+  (prog-mode . lsp-deferred)
   (lsp-mode . lsp-enable-which-key-integration)
   (lsp-completion-mode . emaconf/lsp-mode-setup-completion)
   :commands lsp
@@ -703,12 +707,11 @@
 
 (use-package typescript-mode
   :mode "\\.ts\\'"
-  :hook (typescript-mode . lsp-deferred)
   :config
   (setq typescript-indent-level 2))
 
-(use-package zig-mode
-  :hook (zig-mode . lsp-deferred))
+(when (executable-exists-p "zig")
+  (use-package zig-mode))
 
 (setq custom-file (locate-user-emacs-file "custom.el"))
 (when (file-exists-p custom-file)
