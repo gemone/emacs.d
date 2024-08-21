@@ -219,8 +219,11 @@ For Windows.
 ** Windows filename encode
 
 #+begin_src emacs-lisp
-  (when (eq system-type 'windows-nt)
-    (setq file-name-coding-system 'gbk))
+  (when *is-win*
+    (setq locale-coding-system 'gb18030)  ;此句保证中文字体设置有效
+    (setq w32-unicode-filenames 'nil)       ; 确保file-name-coding-system变量的设置不会无效
+    (setq file-name-coding-system 'gb18030) ; 设置文件名的编码为gb18030
+    )
 #+end_src
 
 * Startup Performance
@@ -1288,7 +1291,7 @@ For Windows System.
 
 #+NAME: lsp-extracted
 #+begin_src emacs-lisp :tangle no
-"vscode-langservers-extracted"
+  "vscode-langservers-extracted"
 #+end_src
 
 #+begin_src shell :noweb yes

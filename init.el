@@ -67,8 +67,11 @@
 (unless (eq system-type 'windows-nt)
   (set-selection-coding-system 'utf-8))
 
-(when (eq system-type 'windows-nt)
-  (setq file-name-coding-system 'gbk))
+(when *is-win*
+  (setq locale-coding-system 'gb18030)  ;此句保证中文字体设置有效
+  (setq w32-unicode-filenames 'nil)       ; 确保file-name-coding-system变量的设置不会无效
+  (setq file-name-coding-system 'gb18030) ; 设置文件名的编码为gb18030
+  )
 
 ;; The default is 800 kilobytes.  Measured in bytes.
 (setq gc-cons-threshold (* 50 1000 1000))
