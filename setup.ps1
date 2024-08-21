@@ -1,18 +1,23 @@
 python3 -m venv ./etc/python-venv
-./etc/python-venv/Scripts/Activate.ps1
+
+./etc/python-venv
+/Scripts/Activate.ps1
 
 mkdir ./etc/bin
 
 git config --global core.autocrlf true
 
-pip3 install -U ruff-lsp pyright jupyterlab jupyter-console
+pip3 install -U --trusted-host mirrors.huaweicloud.com -i https://mirrors.huaweicloud.com/repository/pypi/simple  
+ ruff-lsp pyright jupyterlab jupyter-console
 
 if (Test-Path (where.exe npm)) {
-  npm install --prefix ./etc/npm bash-language-server
+  npm install --prefix --prefix ./etc/npm --registry=https://registry.npmmirror.com
+ bash-language-server
 }
 
 if (Test-Path (where.exe npm)) {
-  npm install --prefix ./etc/npm typescript-language-server typescript
+  npm install --prefix --prefix ./etc/npm --registry=https://registry.npmmirror.com
+ typescript-language-server typescript
 }
 
 function Install-ZLS {

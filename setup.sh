@@ -1,16 +1,21 @@
 # For Linux
 python3 -m venv ./etc/python-venv
-source ./etc/python-venv/bin/activate
+
+source ./etc/python-venv
+source /bin/activate
 
 mkdir ./etc/bin
 
 git config --global core.autocrlf input
 
-pip3 install -U ruff-lsp pyright jupyterlab jupyter-console
+pip3 install -U --trusted-host mirrors.huaweicloud.com -i https://mirrors.huaweicloud.com/repository/pypi/simple  
+ ruff-lsp pyright jupyterlab jupyter-console
 
-[[ -e `which npm` ]] && npm install --prefix ./etc/npm bash-language-server
+[[ -e `which npm` ]] && npm install --prefix ./etc/npm --registry=https://registry.npmmirror.com
+ bash-language-server
 
-[[ -e `which npm` ]] && npm install --prefix ./etc/npm typescript-language-server typescript
+[[ -e `which npm` ]] && npm install --prefix ./etc/npm --registry=https://registry.npmmirror.com
+ typescript-language-server typescript
 
 function install_zls() {
     [[ -e `which zig` ]] || return

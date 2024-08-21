@@ -46,6 +46,12 @@ You can define variable here.
   (defconst *is-win* (string-equal system-type "windows-nt"))
 #+end_src
 
+#+NAME: pip-install-args
+--trusted-host mirrors.huaweicloud.com -i https://mirrors.huaweicloud.com/repository/pypi/simple  
+
+#+NAME: npm-install-args
+--prefix ./etc/npm --registry=https://registry.npmmirror.com
+
 ** Local init
 
 Before other config.
@@ -62,13 +68,11 @@ Before other config.
 - Windows: =pwsh setup.ps1=
 
 #+NAME: python-venv
-#+begin_src emacs-lisp :tangle no
-  "./etc/python-venv"
-#+end_src
+./etc/python-venv
 
 #+NAME: add-venv
-#+begin_src emacs-lisp :tangle no :noweb yes
-  "python3 -m venv <<python-venv()>>"
+#+begin_src emacs-lisp :tangle no :var venv=python-venv
+  (concat "python3 -m venv " venv)
 #+end_src
 
 For Linux:
@@ -98,8 +102,8 @@ Add venv python to exec-path.
 =pip3 install=
 
 #+NAME: pip-install
-#+begin_src emacs-lisp :tangle no :var package=""
-  (concat "pip3 install -U " package)
+#+begin_src emacs-lisp :tangle no :var package="" args=pip-install-args
+  (concat "pip3 install -U " args " " package)
 #+end_src
 
 =shell-interpreter=, use =pyvenv= to handle
@@ -114,14 +118,14 @@ Add venv python to exec-path.
 =npm install= with prefix.
 
 #+NAME: bash-npm-install
-#+begin_src emacs-lisp :tangle no :var package=""
-  (concat "[[ -e `which npm` ]] && npm install --prefix ./etc/npm " package)
+#+begin_src emacs-lisp :tangle no :var args=npm-install-args package=""
+  (concat "[[ -e `which npm` ]] && npm install " args " " package)
 #+end_src
 
 #+NAME: pwsh-npm-install
-#+begin_src emacs-lisp :tangle no :var package=""
+#+begin_src emacs-lisp :tangle no :var package="" args=npm-install-args
   (concat "if (Test-Path (where.exe npm)) {
-    npm install --prefix ./etc/npm "  package
+    npm install --prefix " args " "  package
     "
   }")
 #+end_src
@@ -1103,9 +1107,7 @@ Try these commands with =M-x=:
 *** Python
 
 #+NAME: python-lsp
-#+begin_src emacs-lisp :tangle no
-  "ruff-lsp pyright jupyterlab jupyter-console"
-#+end_src
+ruff-lsp pyright jupyterlab jupyter-console
 
 #+begin_src shell :noweb yes
   <<pip-install(package=python-lsp)>>
