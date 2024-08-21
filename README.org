@@ -19,7 +19,7 @@ This snippet adds a hook to =org-mode= buffers so that =emaconf/org-babel-tangle
         (org-babel-tangle))))
 
   (add-hook 'org-mode-hook (lambda () (add-hook 'after-save-hook #'emaconf/org-babel-tangle)))
-        #+end_src
+#+end_src
 
 ** Babel Languages
 
@@ -47,10 +47,14 @@ You can define variable here.
 #+end_src
 
 #+NAME: pip-install-args
---trusted-host mirrors.huaweicloud.com -i https://mirrors.huaweicloud.com/repository/pypi/simple  
+#+begin_src emacs-lisp :tangle no
+"--trusted-host mirrors.huaweicloud.com -i https://mirrors.huaweicloud.com/repository/pypi/simple"
+#+end_src
 
 #+NAME: npm-install-args
---prefix ./etc/npm --registry=https://registry.npmmirror.com
+#+begin_src emacs-lisp :tangle no
+"--prefix ./etc/npm --registry=https://registry.npmmirror.com"
+#+end_src
 
 ** Local init
 
@@ -68,7 +72,9 @@ Before other config.
 - Windows: =pwsh setup.ps1=
 
 #+NAME: python-venv
-./etc/python-venv
+#+begin_src emacs-lisp :tangle no
+"./etc/python-venv"
+#+end_src
 
 #+NAME: add-venv
 #+begin_src emacs-lisp :tangle no :var venv=python-venv
@@ -93,10 +99,10 @@ For Windows:
 Add venv python to exec-path.
 
 #+begin_src emacs-lisp :var venv=python-venv
-    (add-to-list 'exec-path (expand-file-name
-			     (concat venv (cond (*is-win* "/Scripts")
-						(t "/bin")))
-			   user-emacs-directory))
+  (add-to-list 'exec-path (expand-file-name
+  			 (concat venv (cond (*is-win* "/Scripts")
+  					    (t "/bin")))
+  			 user-emacs-directory))
 #+end_src
 
 =pip3 install=
@@ -1269,6 +1275,21 @@ For Windows System.
 #+begin_src emacs-lisp
   (use-package zig-mode
     :hook (zig-mode . lsp-deferred))
+#+end_src
+
+*** HTML/CSS/JSON/ESLint 
+
+#+NAME: lsp-extracted
+#+begin_src emacs-lisp :tangle no
+"vscode-langservers-extracted"
+#+end_src
+
+#+begin_src shell :noweb yes
+  <<bash-npm-install(package=lsp-extracted)>>
+#+end_src
+
+#+begin_src powershell :noweb yes
+  <<pwsh-npm-install(package=lsp-extracted)>>
 #+end_src
 
 * Custom

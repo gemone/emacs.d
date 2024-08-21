@@ -1,21 +1,16 @@
 # For Linux
 python3 -m venv ./etc/python-venv
-
-source ./etc/python-venv
-source /bin/activate
+source ./etc/python-venv/bin/activate
 
 mkdir ./etc/bin
 
 git config --global core.autocrlf input
 
-pip3 install -U --trusted-host mirrors.huaweicloud.com -i https://mirrors.huaweicloud.com/repository/pypi/simple  
- ruff-lsp pyright jupyterlab jupyter-console
+pip3 install -U --trusted-host mirrors.huaweicloud.com -i https://mirrors.huaweicloud.com/repository/pypi/simple ruff-lsp pyright jupyterlab jupyter-console
 
-[[ -e `which npm` ]] && npm install --prefix ./etc/npm --registry=https://registry.npmmirror.com
- bash-language-server
+[[ -e `which npm` ]] && npm install --prefix ./etc/npm --registry=https://registry.npmmirror.com bash-language-server
 
-[[ -e `which npm` ]] && npm install --prefix ./etc/npm --registry=https://registry.npmmirror.com
- typescript-language-server typescript
+[[ -e `which npm` ]] && npm install --prefix ./etc/npm --registry=https://registry.npmmirror.com typescript-language-server typescript
 
 function install_zls() {
     [[ -e `which zig` ]] || return
@@ -26,7 +21,7 @@ function install_zls() {
     current_arch=$(uname -m)
     current_system=$(uname -s)
     version=$(zig version)
-
+    
     # I don't known how to define macos system. sorry.
     # please use bash to execute
     wget https://github.com/zigtools/zls/releases/download/${version}/zls-${current_arch,,}-${current_system,,}.tar.xz -O ${download_file}
@@ -38,3 +33,5 @@ function install_zls() {
 }
 
 install_zls
+
+[[ -e `which npm` ]] && npm install --prefix ./etc/npm --registry=https://registry.npmmirror.com vscode-langservers-extracted

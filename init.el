@@ -25,16 +25,14 @@
 (when (file-exists-p init-local-file)
   (load init-local-file))
 
-(let ((venv '"./etc/python-venv
-"))
+(let ((venv '"./etc/python-venv"))
 (add-to-list 'exec-path (expand-file-name
 			 (concat venv (cond (*is-win* "/Scripts")
 					    (t "/bin")))
-		       user-emacs-directory))
+			 user-emacs-directory))
 )
 
-(let ((venv '"./etc/python-venv
-"))
+(let ((venv '"./etc/python-venv"))
 (setenv "DEFAULT_PYTHON_ENV" (expand-file-name venv user-emacs-directory))
 (setenv "PYTHONIOENCODING" "utf-8")
 )
