@@ -60,7 +60,7 @@ You can define variable here.
 
 #+NAME: npm-install-args
 #+begin_src emacs-lisp :tangle no
-"--global --prefix ./etc/npm --registry=https://registry.npmmirror.com"
+"--global --prefix ./etc/npm --registry=https://mirrors.huaweicloud.com/repository/npm/"
 #+end_src
 
 ** Local init
