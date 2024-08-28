@@ -130,6 +130,7 @@
                 term-mode-hook
                 shell-mode-hook
                 treemacs-mode-hook
+		vterm-mode-hook
                 eshell-mode-hook))
   (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
@@ -546,7 +547,7 @@
 (use-package rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
 
-(defun emaconf/configure-shell ()
+(defun emaconf/configure-eshell ()
   ;; Save command history when commands are entered
   (add-hook 'eshell-pre-commond-hook 'eshell-save-some-history)
   (add-to-list 'eshell-output-filter-functions 'eshell-truncate-buffer)
@@ -566,9 +567,12 @@
 (use-package eshell-git-prompt)
 (use-package eshell
   :straight nil
-  :hook (eshell-first-time-mode . emaconf/configure-shell)
+  :hook (eshell-first-time-mode . emaconf/configure-eshell)
   :config
   (eshell-git-prompt-use-theme 'powerline))
+
+(when (not *is-win*)
+  (use-package vterm))
 
 (use-package corfu
   :custom
