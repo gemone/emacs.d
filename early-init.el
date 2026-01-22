@@ -46,14 +46,19 @@
 ;; --- EDITOR PREFERENCES ---
 (setq display-line-numbers-type 'relative) ; Relative line numbers
 
+;; Use y/n instead of yes/no for faster confirmation
+(setq use-short-answers t)
+
+;; --- ENCODING & LINE ENDINGS ---
+;; Set default coding system to UTF-8 with Unix (LF) line endings
+(set-language-environment "UTF-8")
+(set-default-coding-systems 'utf-8-unix)
+
+;; Set buffer-file-coding-system for new files
+(setq-default buffer-file-coding-system 'utf-8-unix)
+
 ;; --- PERFORMANCE ---
 ;; Disable package.el (using elpaca instead)
 (setq package-enable-at-startup nil)
 
 ;; Create directories if they don't exist
-(let ((backup-dir (expand-file-name "backups/" user-emacs-directory))
-      (auto-dir (expand-file-name "auto-save/" user-emacs-directory))
-      (auto-list-dir (expand-file-name "auto-save-list/" user-emacs-directory)))
-  (dolist (dir (list backup-dir auto-dir auto-list-dir))
-    (unless (file-exists-p dir)
-      (make-directory dir t))))

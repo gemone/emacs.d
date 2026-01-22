@@ -2,20 +2,6 @@
 
 ;;; ============================================================
 ;;; 00 - PERFORMANCE
-;  ;; Create directories if they don't exist
-  (let ((backup-dir (expand-file-name "backups/" user-emacs-directory))
-	(auto-dir (expand-file-name "auto-save/" user-emacs-directory))
-	(auto-list-dir (expand-file-name "auto-save-list/" user-emacs-directory)))
-    (dolist (dir (list backup-dir auto-dir auto-list-dir))
-      (unless (file-exists-p dir)
-	(make-directory dir t))))
-;  ;; Create directories if they don't exist
-  (let ((backup-dir (expand-file-name "backups/" user-emacs-directory))
-	(auto-dir (expand-file-name "auto-save/" user-emacs-directory))
-	(auto-list-dir (expand-file-name "auto-save-list/" user-emacs-directory)))
-    (dolist (dir (list backup-dir auto-dir auto-list-dir))
-      (unless (file-exists-p dir)
-	(make-directory dir t))))
 ; ============================================================
 (defvar default-file-name-handler-alist file-name-handler-alist)
 (setq gc-cons-threshold most-positive-fixnum gc-cons-percentage 0.6
@@ -70,18 +56,14 @@
 (add-hook 'after-init-hook #'elpaca-process-queues)
 (elpaca `(,@elpaca-order))
 
+(when (memq system-type '(ms-dos windows-nt))
+  (elpaca-no-symlink-mode))
+
 (elpaca elpaca-use-package
   (elpaca-use-package-mode))
 
 ;;; ============================================================
-;;; 02 - WINDOWS COMPATIBILITY
-;;; ============================================================
-;; Disable symlinks on Windows
-(when (memq system-type '(ms-dos windows-nt))
-  (elpaca-no-symlink-mode))
-
-;;; ============================================================
-;;; 03 - UI SETTINGS
+;;; 02 - UI SETTINGS
 ;;; ============================================================
 (use-package emacs
   :ensure nil
@@ -120,14 +102,7 @@
   :init (doom-modeline-mode 1))
 
 ;;; ============================================================
-;;; 04 - FONT CONFIGURATION
-;;; ============================================================
-(use-package font
-  :load-path "lisp"
-  :demand t)
-
-;;; ============================================================
-;;; 05 - KEYBINDINGS (EVIL & GENERAL)
+;;; 04 - KEYBINDINGS (EVIL & GENERAL)
 ;;; ============================================================
 (use-package evil
   :ensure t
@@ -176,10 +151,25 @@
 (use-package which-key
   :ensure t
   :demand t
-  :config (which-key-mode))
+  :config
+  (setq which-key-idle-delay 0.5)
+  (setq which-key-secondary-delay 0.1)
+  (which-key-mode))
 
 ;;; ============================================================
-;;; 06 - COMPLETION
+;;; 03 - FONT CONFIGURATION
+;;; ============================================================
+(use-package font
+  :load-path "lisp"
+  :demand t)
+
+(use-package unicad
+  :ensure t
+  :demand t
+  :config (unicad-mode))
+
+;;; ============================================================
+;;; 05 - COMPLETION
 ;;; ============================================================
 (use-package vertico
   :ensure t
@@ -211,7 +201,7 @@
   (completion-pcm-leading-wildcard t)) ;; Emacs 31: partial-completion behaves like substring
 
 ;;; ============================================================
-;;; 07 - TOOLS
+;;; 06 - TOOLS
 ;;; ============================================================
 (use-package consult
   :ensure t
@@ -235,7 +225,7 @@
 
 
 ;;; ============================================================
-;;; 08 - CODING (TREE-SITTER)
+;;; 07 - CODING (TREE-SITTER)
 ;;; ============================================================
 ;;; TODO
 
