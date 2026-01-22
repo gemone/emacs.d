@@ -3,4 +3,6 @@ elpaca/
 auto-save/
 auto-save-list/
 transient/
+cnfonts/
 history
+*.elc

@@ -1,6 +1,22 @@
-;; init.el
+;;; init.el
 
-;; --- 00-PERFORMANCE  ---
+;;; ============================================================
+;;; 00 - PERFORMANCE
+;  ;; Create directories if they don't exist
+  (let ((backup-dir (expand-file-name "backups/" user-emacs-directory))
+	(auto-dir (expand-file-name "auto-save/" user-emacs-directory))
+	(auto-list-dir (expand-file-name "auto-save-list/" user-emacs-directory)))
+    (dolist (dir (list backup-dir auto-dir auto-list-dir))
+      (unless (file-exists-p dir)
+	(make-directory dir t))))
+;  ;; Create directories if they don't exist
+  (let ((backup-dir (expand-file-name "backups/" user-emacs-directory))
+	(auto-dir (expand-file-name "auto-save/" user-emacs-directory))
+	(auto-list-dir (expand-file-name "auto-save-list/" user-emacs-directory)))
+    (dolist (dir (list backup-dir auto-dir auto-list-dir))
+      (unless (file-exists-p dir)
+	(make-directory dir t))))
+; ============================================================
 (defvar default-file-name-handler-alist file-name-handler-alist)
 (setq gc-cons-threshold most-positive-fixnum gc-cons-percentage 0.6
       file-name-handler-alist nil
@@ -12,7 +28,9 @@
                   gc-cons-percentage 0.1
                   file-name-handler-alist default-file-name-handler-alist)))
 
-;; --- 01-Package Manager ---
+;;; ============================================================
+;;; 01 - PACKAGE MANAGER
+;;; ============================================================
 (defvar elpaca-installer-version 0.11)
 (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
 (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
@@ -55,44 +73,25 @@
 (elpaca elpaca-use-package
   (elpaca-use-package-mode))
 
-;;; --- 02 UI-SETTINGS ---
+;;; ============================================================
+;;; 02 - WINDOWS COMPATIBILITY
+;;; ============================================================
+;; Disable symlinks on Windows
+(when (memq system-type '(ms-dos windows-nt))
+  (elpaca-no-symlink-mode))
+
+;;; ============================================================
+;;; 03 - UI SETTINGS
+;;; ============================================================
 (use-package emacs
   :ensure nil
   :init
-  (setq inhibit-startup-message t)
-  (setq display-line-numbers-type 'relative)
-  (menu-bar-mode -1)
-  (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
-  (when (display-graphic-p)
-    (scroll-bar-mode -1)
-    (set-fringe-mode 10))
-
-  (let ((backup-dir (expand-file-name "backups/" user-emacs-directory))
-        (auto-dir (expand-file-name "auto-save/" user-emacs-directory)))
-    (dolist (dir (list backup-dir auto-dir))
-      (unless (file-exists-p dir)
-        (make-directory dir t))))
+  ;; Maximize frame on startup
+  (add-hook 'window-setup-hook #'toggle-frame-maximized)
 
   :config
   (global-display-line-numbers-mode t)
-  (when (display-graphic-p)
-    (set-face-attribute 'default nil :height 150 :font "CaskaydiaCove Nerd Font Mono"))
   :custom
-  ;; --- For backup
-  ;; 1. Setup backup directory
-  (backup-directory-alist `(("." . ,(expand-file-name "backups/" user-emacs-directory))))
-  
-  ;; 2. Setup auto-save directory (the #file# files)
-  (auto-save-file-name-transforms `((".*" ,(expand-file-name "auto-save/" user-emacs-directory) t)))
-  
-  ;; 3. Backup behavior
-  (vc-make-backup-files nil)     ; Don't backup files controlled by Git/Version Control
-  (version-control t)            ; Use number suffixes for backups
-  (kept-new-versions 10)         ; Keep 10 newest backups
-  (kept-old-versions 0)          ; Delete old versions
-  (delete-old-versions t)        ; Silent delete
-  (backup-by-copying t)          ; Copying is safer than renaming
-
   ;;  --- FOR vertico
   ;; Enable context menu. `vertico-multiform-mode' adds a menu in the minibuffer
   ;; to switch display modes.
@@ -120,15 +119,26 @@
   :ensure t
   :init (doom-modeline-mode 1))
 
-;;; --- 03 KEYBINDING SYSTEM (EVIL & GENERAL) ---
+;;; ============================================================
+;;; 04 - FONT CONFIGURATION
+;;; ============================================================
+(use-package font
+  :load-path "lisp"
+  :demand t)
+
+;;; ============================================================
+;;; 05 - KEYBINDINGS (EVIL & GENERAL)
+;;; ============================================================
 (use-package evil
   :ensure t
   :demand t
   :init
-  (setq evil-want-integration t) ;; This is optional since it's already set to t by default.
-  (setq evil-want-keybinding nil)
+  (setq evil-want-integration t)   ; Enable evil integration
+  (setq evil-want-keybinding nil)   ; We'll use evil-collection
   :config
-  (evil-mode 1))
+  (evil-mode 1)
+  ;; Bind '-' to dired-jump in normal state
+  (define-key evil-normal-state-map (kbd "-") 'dired-jump))
 
 (use-package evil-collection
   :after evil
@@ -168,7 +178,9 @@
   :demand t
   :config (which-key-mode))
 
-;;; --- 04 COMPLETION ---
+;;; ============================================================
+;;; 06 - COMPLETION
+;;; ============================================================
 (use-package vertico
   :ensure t
   :init
@@ -198,7 +210,9 @@
   (completion-category-defaults nil) ;; Disable defaults, use our settings
   (completion-pcm-leading-wildcard t)) ;; Emacs 31: partial-completion behaves like substring
 
-;;; --- 05 Tools
+;;; ============================================================
+;;; 07 - TOOLS
+;;; ============================================================
 (use-package consult
   :ensure t
   :general
@@ -220,7 +234,9 @@
     "gg" '(magit-status :hint "Magit status")))
 
 
-;;; --- 06 Coding: TREE-SITTER
+;;; ============================================================
+;;; 08 - CODING (TREE-SITTER)
+;;; ============================================================
 ;;; TODO
 
 
