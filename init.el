@@ -233,5 +233,23 @@
   :load-path "lisp"
   :demand t)
 
+;;; ============================================================
+;;; 08 - LSP (EGLot)
+;;; ============================================================
+;; Configure Eglot LSP client for Java, Python, TypeScript/JavaScript,
+;; Angular, and HTML development with Corfu completion
+;; See lisp/lsp-mode.el for detailed documentation
+(use-package lsp-mode
+  :load-path "lisp"
+  :demand t)
+
+;;; ============================================================
+;;; 09 - TERMINAL (EAT)
+;;; ============================================================
+;; EAT (Emulate A Terminal) - Fast terminal emulator
+;; See lisp/terminal.el for keybindings: SPC o t (toggle), SPC o T (new)
+(use-package terminal
+  :load-path "lisp"
+  :demand t)
 
 ;;; TODO: custom.el
