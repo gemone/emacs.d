@@ -2,7 +2,7 @@
 
 ;;; ============================================================
 ;;; 00 - PERFORMANCE
-; ============================================================
+;;; ============================================================
 (defvar default-file-name-handler-alist file-name-handler-alist)
 (setq gc-cons-threshold most-positive-fixnum gc-cons-percentage 0.6
       file-name-handler-alist nil
@@ -227,7 +227,11 @@
 ;;; ============================================================
 ;;; 07 - CODING (TREE-SITTER)
 ;;; ============================================================
-;;; TODO
+;; Load tree-sitter configuration for various programming languages
+;; See lisp/coding-mode.el for detailed documentation
+(use-package coding-mode
+  :load-path "lisp"
+  :demand t)
 
 
 ;;; TODO: custom.el

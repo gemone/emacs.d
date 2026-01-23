@@ -1,8 +1,10 @@
 backups/
 elpaca/
+elpa/
 auto-save/
 auto-save-list/
 transient/
 cnfonts/
+tree-sitter/
 history
 *.elc
