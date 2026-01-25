@@ -335,6 +335,50 @@ Used as :around advice for eglot-ensure."
 		  ("not"    . ?¬)))
   (setq prettify-symbols-unprettify-at-point 'right-edge))
 
+;; ============================================
+;; Angular Development Environment
+;; ============================================
+
+;; TypeScript/TSX mode configuration
+(use-package typescript-mode
+  :ensure t
+  :mode (("\\.ts\\'" . typescript-mode)
+         ("\\.tsx\\'" . typescript-mode))
+  :hook
+  ((typescript-mode . eglot-ensure))
+  :config
+  (setq typescript-indent-level 2)
+  (setq typescript-expr-indent-offset 2))
+
+;; Web mode for HTML templates
+(use-package web-mode
+  :ensure t
+  :mode (("\\.html\\'" . web-mode))
+  :config
+  (setq web-mode-markup-indent-offset 2)
+  (setq web-mode-css-indent-offset 2)
+  (setq web-mode-code-indent-offset 2)
+  (setq web-mode-enable-current-element-highlight t)
+  (setq web-mode-enable-auto-closing t)
+  (setq web-mode-engines-alist
+        '(("angular" . "\\.component\\.html\\'"))))
+
+;; Angular mode for component templates
+(use-package angular-mode
+  :ensure t
+  :mode (("\\.component\\.html\\'" . angular-html-mode))
+  :hook
+  (angular-html-mode . (lambda ()
+                         (setq-local eglot-workspace-configuration
+                                     '((:typescript
+                                        (:preferCodeSnippetsOnNewLine t)
+                                        (:format
+                                         (:semicolons t
+                                          :trailingComma :es5
+                                          :indentSize 2
+                                          :tabSize 2))))))))
+
+
 (use-package eglot
   :ensure nil
   :demand t
@@ -356,6 +400,15 @@ Used as :around advice for eglot-ensure."
     "cd" '(xref-find-definitions :which-key "Go to definition")
     "cD" '(xref-find-references :which-key "Find references"))
   :config
+  ;; TypeScript Language Server
+  (add-to-list 'eglot-server-programs
+               '(typescript-mode . ("typescript-language-server" "--stdio")))
+
+  ;; Angular Language Server for web-mode (component templates)
+  (add-to-list 'eglot-server-programs
+               `(web-mode . ("ngserver" "--stdio"
+                             "--logFile" ,(expand-file-name "ngserver.log" temporary-file-directory))))
+
   (advice-add 'eglot-ensure :around #'gemo/eglot-ensure-if-appropriate))
 
 (use-package reformatter
