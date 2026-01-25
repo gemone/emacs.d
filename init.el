@@ -1,8 +1,6 @@
 ;;; init.el
 
-;;; ============================================================
-;;; 00 - PERFORMANCE
-;;; ============================================================
+;;; 00 - Performance
 (defvar default-file-name-handler-alist file-name-handler-alist)
 (setq gc-cons-threshold most-positive-fixnum gc-cons-percentage 0.6
       file-name-handler-alist nil
@@ -14,9 +12,7 @@
                   gc-cons-percentage 0.1
                   file-name-handler-alist default-file-name-handler-alist)))
 
-;;; ============================================================
-;;; 01 - PACKAGE MANAGER
-;;; ============================================================
+;;; 01 - Package Manager
 (defvar elpaca-installer-version 0.11)
 (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
 (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
@@ -62,9 +58,7 @@
 (elpaca elpaca-use-package
   (elpaca-use-package-mode))
 
-;;; ============================================================
-;;; 02 - UI SETTINGS
-;;; ============================================================
+;;; 02 - UI Settings
 (use-package emacs
   :ensure nil
   :init
@@ -89,6 +83,15 @@
    '(read-only t cursor-intangible t face minibuffer-prompt))
   )
 
+(use-package nerd-icons
+  :ensure t
+  :config
+  (when (display-graphic-p)
+    (setq nerd-icons-font-family "CaskaydiaCove Nerd Font")
+    )
+  (setq nerd-icons-scale-factor 1.0)
+  )
+
 (use-package doom-themes
   :ensure t
   :demand t
@@ -99,15 +102,18 @@
 
 (use-package doom-modeline
   :ensure t
+  :custom
+  ;; Disable icons to avoid font issues
+  (doom-modeline-icon t)
+  (doom-modeline-major-mode-icon t)
+  (doom-modeline-major-mode-color-icon t)
   :init (doom-modeline-mode 1))
 
-;;; ============================================================
-;;; 04 - KEYBINDINGS (EVIL & GENERAL)
-;;; ============================================================
+;;; 04 - Keybindings
 (use-package evil
   :ensure t
   :demand t
-  :init
+  :preface
   (setq evil-want-integration t)   ; Enable evil integration
   (setq evil-want-keybinding nil)   ; We'll use evil-collection
   :config
@@ -134,43 +140,82 @@
     :prefix "SPC"
     :global-prefix "C-SPC")
 
+  ;; Backslash keybindings for config
+  (general-define-key
+   :states 'normal
+   :keymaps 'override
+   "\\" '(nil :which-key "config"))
+
+  (general-define-key
+   :states 'normal
+   :prefix "\\"
+   :non-normal-prefix "C-\\"
+   "cc" '(lambda () (interactive) (find-file (expand-file-name "init.el" user-emacs-directory)) :which-key "config init.el")
+   "cd" '(lambda () (interactive) (dired user-emacs-directory) :which-key "config directory"))
+
   (gemo/leader-keys
-    "SPC" '(execute-extended-command :hint "M-x")
-    "!"   '(shell-command :hint "Shell command")
-    
+    "SPC" '(execute-extended-command :which-key "M-x")
+    "!"   '(shell-command :which-key "Shell command")
+
     ;; Buffer Management
-    "b"  '(:ignore t :hint "buffer")
-    "bb" '(switch-to-buffer :hint "Switch buffer")
-    "bk" '(kill-current-buffer :hint "Kill buffer")
-    "bn" '(next-buffer :hint "Next buffer")
-    "bp" '(previous-buffer :hint "Prev buffer")
-    "br" '(revert-buffer :hint "Revert buffer")
-    )
-  )
+    "b"  '(:ignore t :which-key "buffer")
+    "bb" '(switch-to-buffer :which-key "Switch buffer")
+    "bk" '(kill-current-buffer :which-key "Kill buffer")
+    "bn" '(next-buffer :which-key "Next buffer")
+    "bp" '(previous-buffer :which-key "Prev buffer")
+    "br" '(revert-buffer :which-key "Revert buffer")
+
+    ;; Open
+    "o"  '(:ignore t :which-key "open")
+    "ot" '(gemo/toggle-term :which-key "Toggle terminal")
+    "oT" '(gemo/new-terminal :which-key "New terminal")
+    ))
 
 (use-package which-key
   :ensure t
   :demand t
+  :custom
+  (which-key-idle-delay 0.5)
+  (which-key-secondary-delay 0.1)
   :config
-  (setq which-key-idle-delay 0.5)
-  (setq which-key-secondary-delay 0.1)
   (which-key-mode))
 
-;;; ============================================================
-;;; 03 - FONT CONFIGURATION
-;;; ============================================================
-(use-package font
-  :load-path "lisp"
-  :demand t)
+;;; 03 - Font
+(use-package cnfonts
+  :ensure t
+  :demand t
+  :custom
+  (cnfonts-use-system-type t)
+  (cnfonts-personal-fontnames
+   '(("CaskaydiaCove Nerd Font" "Fira Code" "JetBrains Mono"
+      "SF Mono" "Menlo" "Monaco" "Consolas" "Cascadia Code"
+      "DejaVu Sans Mono" "Ubuntu Mono" "Liberation Mono"
+      "Hack" "Source Code Pro" "Inconsolata")
+     ("LXGW WenKai Mono"
+      "PingFang SC" "PingFang TC" "Hiragino Sans GB"
+      "Microsoft YaHei" "SimHei" "SimSun"
+      "Noto Sans Mono CJK SC" "Noto Sans CJK SC"
+      "WenQuanYi Zen Hei" "WenQuanYi Micro Hei"
+      "Source Han Sans CN")
+     ("HanaMinB")
+     ("Segoe UI Symbol" "Symbola" "Apple Symbols" "Arial Unicode MS")
+     ("NanumGothic" "Arial Unicode MS")))
+  :config
+  (cnfonts-mode 1)
+  ;; Use Emacs state in cnfonts-ui-mode to avoid evil keybinding conflicts
+  (with-eval-after-load 'evil
+    (add-to-list 'evil-emacs-state-modes 'cnfonts-ui-mode))
+  :general
+  (:keymaps 'cnfonts-mode-map
+   "C--" #'cnfonts-decrease-fontsize
+   "C-=" #'cnfonts-increase-fontsize))
 
 (use-package unicad
   :ensure t
   :demand t
   :config (unicad-mode))
 
-;;; ============================================================
-;;; 05 - COMPLETION
-;;; ============================================================
+;;; 05 - Completion
 (use-package vertico
   :ensure t
   :init
@@ -200,56 +245,275 @@
   (completion-category-defaults nil) ;; Disable defaults, use our settings
   (completion-pcm-leading-wildcard t)) ;; Emacs 31: partial-completion behaves like substring
 
-;;; ============================================================
-;;; 06 - TOOLS
-;;; ============================================================
+;;; 06 - Tools
 (use-package consult
   :ensure t
   :general
   (gemo/leader-keys
-    "s"  '(:ignore t :hint "search")
-    "ss" '(consult-line :hint "Search lines")
-    "si" '(consult-imenu :hint "Jump to symbol")
-    "so" '(consult-outline :hint "Search outline/symbols") ; Quick jump in file
+    "s"  '(:ignore t :which-key "search")
+    "ss" '(consult-line :which-key "Search lines")
+    "si" '(consult-imenu :which-key "Jump to symbol")
+    "so" '(consult-outline :which-key "Search outline/symbols") ; Quick jump in file
     ))
 
-(use-package transient :ensure t)
+(use-package transient
+  :ensure t
+  :demand t)
 
 (use-package magit
   :ensure t
   :after transient
   :general
   (gemo/leader-keys
-    "g"  '(:ignore t :hint "git")
-    "gg" '(magit-status :hint "Magit status")))
+    "g"  '(:ignore t :which-key "git")
+    "gg" '(magit-status :which-key "Magit status")))
+
+;;; 07 - Code (Coding-Mode)
+
+(use-package treesit
+  :ensure nil
+  :preface
+  ;; Configure tree-sitter language sources before package loads
+  (setq treesit-language-source-alist
+	'((bash       "https://github.com/tree-sitter/tree-sitter-bash" "master")
+          (c          "https://github.com/tree-sitter/tree-sitter-c" "master")
+          (cmake      "https://github.com/uyha/tree-sitter-cmake" "master")
+          (cpp        "https://github.com/tree-sitter/tree-sitter-cpp" "master")
+          (css        "https://github.com/tree-sitter/tree-sitter-css" "master")
+          (go         "https://github.com/tree-sitter/tree-sitter-go" "master")
+          (gomod      "https://github.com/camdencheek/tree-sitter-go-mod" "main")
+          (html       "https://github.com/tree-sitter/tree-sitter-html" "master")
+          (java       "https://github.com/tree-sitter/tree-sitter-java" "master")
+          (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master")
+          (json       "https://github.com/tree-sitter/tree-sitter-json" "master")
+          (make       "https://github.com/alemuller/tree-sitter-make" "master")
+          (python     "https://github.com/tree-sitter/tree-sitter-python" "master")
+          (tsx        "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
+          (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
+          (yaml       "https://github.com/ikatyang/tree-sitter-yaml" "master")
+          (zig        "https://github.com/tree-sitter-grammars/tree-sitter-zig" "master")))
+
+  ;; Helper functions for tree-sitter grammar management
+  ;;;###autoload
+  (defun gemo/treesit-supported-p ()
+    "Check if current Emacs supports tree-sitter."
+    (interactive)
+    (if (treesit-available-p)
+	(message "✓ Tree-sitter is supported (Emacs %d.%d)"
+		 emacs-major-version emacs-minor-version)
+      (message "✗ Tree-sitter not available")))
+
+  ;;;###autoload
+  (defun gemo/treesit-check-grammars ()
+    "Check which tree-sitter grammars are installed."
+    (interactive)
+    (when (gemo/treesit-supported-p)
+      (let ((installed 0) (missing 0))
+	(dolist (lang (mapcar 'car treesit-language-source-alist))
+          (if (treesit-ready-p lang t)
+              (progn (message "✓ %s" lang) (cl-incf installed))
+            (progn (message "✗ %s" lang) (cl-incf missing))))
+	(message "\nSummary: %d installed, %d missing" installed missing))))
+
+  ;;;###autoload
+  (defun gemo/treesit-install-grammar (lang)
+    "Install a single tree-sitter grammar for LANG."
+    (interactive
+     (list (completing-read "Install language grammar: "
+			    (mapcar #'symbol-name (mapcar 'car treesit-language-source-alist)))))
+    (when (gemo/treesit-supported-p)
+      (let ((lang-symbol (intern lang)))
+	(if (treesit-ready-p lang-symbol t)
+            (message "✓ %s grammar is already installed!" lang)
+          (message "Installing %s grammar..." lang)
+          (condition-case err
+              (progn
+		(treesit-install-language-grammar lang-symbol)
+		(message "✓ Successfully installed %s grammar!" lang))
+            (error
+             (message "✗ Failed to install %s grammar: %S" lang (cdr err))))))))
+
+  ;;;###autoload
+  (defun gemo/treesit-install-missing-grammars ()
+    "Install all missing tree-sitter grammars."
+    (interactive)
+    (when (gemo/treesit-supported-p)
+      (let ((missing 0) (failed 0))
+	(dolist (lang (mapcar 'car treesit-language-source-alist))
+          (unless (treesit-ready-p lang t)
+            (cl-incf missing)
+            (message "Installing %s grammar..." lang)
+            (condition-case err
+		(treesit-install-language-grammar lang)
+              (error
+               (message "✗ Failed to install %s: %S" lang (cdr err))
+               (cl-incf failed)))))
+	(if (> missing 0)
+            (message "Installation complete: %d succeeded, %d failed."
+                     (- missing failed) failed)
+          (message "All grammars are already installed!")))))
+
+  ;; Add user's tree-sitter directory to search path
+  (add-to-list 'treesit-extra-load-path
+               (expand-file-name "tree-sitter" user-emacs-directory))
+
+  :init
+  ;; Major mode remapping for tree-sitter modes
+  (dolist (mapping
+	   '((bash-mode        . bash-ts-mode)
+             (c-mode           . c-ts-mode)
+             (c++-mode         . c++-ts-mode)
+             (cmake-mode       . cmake-ts-mode)
+             (css-mode         . css-ts-mode)
+             (go-mode          . go-ts-mode)
+             (go-mod-mode      . go-mod-ts-mode)
+             (html-mode        . html-ts-mode)
+             (java-mode        . java-ts-mode)
+             (js-json-mode     . json-ts-mode)
+             (js-mode          . js-ts-mode)
+             (js2-mode         . js-ts-mode)
+             (makefile-mode    . makefile-ts-mode)
+             (python-mode      . python-ts-mode)
+             (typescript-mode  . typescript-ts-mode)
+             (yaml-mode        . yaml-ts-mode)
+             (zig-mode         . zig-ts-mode)))
+    (add-to-list 'major-mode-remap-alist mapping))
+
+  ;; File type associations
+  (dolist (mapping
+	   '(("CMakeLists\\.txt\\'" . cmake-ts-mode)
+             ("\\.cmake\\'" . cmake-ts-mode)
+             ("\\.cmake\\.in\\'" . cmake-ts-mode)
+             ("/go\\.mod\\'" . go-mod-ts-mode)
+             ("/go\\.sum\\'" . go-mod-ts-mode)
+             ("\\.json\\'" . json-ts-mode)
+             ("\\.tsx\\'" . tsx-ts-mode)
+             ("\\.zig\\'" . zig-ts-mode)
+             ("\\.zig\\.zon\\'" . zig-ts-mode)))
+    (add-to-list 'auto-mode-alist mapping)))
+
+;; Load zig-ts-mode if available (requires Emacs 31+ or manual installation)
+(use-package zig-ts-mode
+  :load-path "lisp/progmodes"
+  :if (treesit-ready-p 'zig t))
 
 
-;;; ============================================================
-;;; 07 - CODING (TREE-SITTER)
-;;; ============================================================
-;; Load tree-sitter configuration for various programming languages
-;; See lisp/coding-mode.el for detailed documentation
-(use-package coding-mode
-  :load-path "lisp"
-  :demand t)
+(use-package markdown-mode
+  :ensure t
+  :mode ("README\\.md\\'" . gfm-mode)
+  :custom
+  (markdown-command "multimarkdown")
+  :bind (:map markdown-mode-map
+              ("C-c C-e" . markdown-do)))
 
-;;; ============================================================
-;;; 08 - LSP (EGLot)
-;;; ============================================================
-;; Configure Eglot LSP client for Java, Python, TypeScript/JavaScript,
-;; Angular, and HTML development with Corfu completion
-;; See lisp/lsp-mode.el for detailed documentation
-(use-package lsp-mode
-  :load-path "lisp"
-  :demand t)
-
-;;; ============================================================
-;;; 09 - TERMINAL (EAT)
-;;; ============================================================
+;;; 08 - Terminal
 ;; EAT (Emulate A Terminal) - Fast terminal emulator
-;; See lisp/terminal.el for keybindings: SPC o t (toggle), SPC o T (new)
-(use-package terminal
-  :load-path "lisp"
+
+(use-package eat
+  :ensure t
+  :preface
+  ;; Terminal helper functions (defined before package loads)
+  (defun gemo--find-terminal-window ()
+    "Find any visible terminal window."
+    (catch 'found
+      (dolist (win (window-list))
+        (with-current-buffer (window-buffer win)
+          (when (derived-mode-p 'eat-mode)
+            (throw 'found win))))
+      nil))
+
+  ;;;###autoload
+  (defun gemo/toggle-term ()
+    "Toggle EAT terminal in bottom window.
+If a terminal is visible, hide it. Otherwise, create/show one."
+    (interactive)
+    (let ((term-win (gemo--find-terminal-window)))
+      (if term-win
+          (delete-window term-win)
+        (select-window (split-window-below))
+        (eat (getenv "SHELL"))
+        (balance-windows))))
+
+  ;;;###autoload
+  (defun gemo/new-terminal ()
+    "Always create a new EAT terminal in bottom window."
+    (interactive)
+    (select-window (split-window-below))
+    (eat (getenv "SHELL"))
+    (balance-windows))
+  :custom
+  (eat-kill-buffer-on-exit t)      ; Kill buffer when shell exits
+  (eat-enable-shell-prompt-annotation t)  ; Better prompt handling
+  (eat-enable-directory-tracking t) ; Track directory changes
+  (eat-term-name "xterm-256color")) ; Fix terminal type issue
+
+;;; 09 - Code (LSP)
+;; LSP client configuration using lsp-bridge
+
+(use-package posframe
+  :ensure t
   :demand t)
 
-;;; TODO: custom.el
+(use-package yaml
+  :ensure t
+  :demand t)
+
+(use-package yasnippet
+  :ensure t
+  :config
+  (yas-global-mode 1))
+
+(use-package lsp-bridge
+  :ensure (:host github :repo "manateelazycat/lsp-bridge"
+           :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
+           :build (:not compile))
+  :after (posframe markdown-mode yaml yasnippet)
+  :preface
+  ;; Python virtual environment for lsp-bridge
+  (defconst gemo/lsp-bridge-venv-dir
+    (expand-file-name ".cache/venv/lsp-bridge" user-emacs-directory)
+    "Directory for lsp-bridge Python virtual environment.")
+
+  (defun gemo/lsp-bridge-init-python-env ()
+    "Initialize Python virtual environment for lsp-bridge."
+    (interactive)
+    (unless (file-exists-p gemo/lsp-bridge-venv-dir)
+      (make-directory gemo/lsp-bridge-venv-dir t)
+      (message "Creating lsp-bridge Python virtual environment...")
+      (call-process "python3" nil nil t "-m" "venv" gemo/lsp-bridge-venv-dir)
+      (message "Installing lsp-bridge Python dependencies...")
+      (let ((pip (expand-file-name "bin/pip3" gemo/lsp-bridge-venv-dir)))
+        (call-process pip nil nil t "install"
+                      "epc" "orjson" "sexpdata" "six" "setuptools"
+                      "paramiko" "rapidfuzz" "watchdog" "packaging"
+                      "--upgrade"))
+      (message "✓ lsp-bridge Python environment initialized!")))
+
+  ;; Initialize Python environment
+  (gemo/lsp-bridge-init-python-env)
+
+  ;; Set Python command to use virtual environment
+  (setq lsp-bridge-python-command
+        (expand-file-name "bin/python" gemo/lsp-bridge-venv-dir))
+  :custom
+  (lsp-bridge-enable-log nil)
+  (lsp-bridge-complete-single-char t)
+  :general
+  ;; Leader key bindings
+  (gemo/leader-keys
+    "l"  '(:ignore t :which-key "lsp")
+    "ld" '(lsp-bridge-find-def :which-key "Go to definition")
+    "lh" '(lsp-bridge-find-references :which-key "Find references")
+    "ln" '(lsp-bridge-rename :which-key "Rename")
+    "lr" '(lsp-bridge-restart-process :which-key "Restart LSP")
+    "ls" '(lsp-bridge-search-workspace-symbol :which-key "Search symbol"))
+  ;; Evil normal mode key bindings
+  (:keymaps 'evil-normal-state-map
+    "gd" '(lsp-bridge-find-def :which-key "Go to definition")
+    "gD" '(lsp-bridge-find-type-def :which-key "Go to type definition")
+    "gr" '(lsp-bridge-find-references :which-key "Find references")
+    "K" '(lsp-bridge-popup-documentation :which-key "Show documentation"))
+  :config
+  ;; Add Emacs Lisp mode to auto-enable list
+  (add-to-list 'lsp-bridge-default-mode-hooks 'emacs-lisp-mode-hook)
+  (global-lsp-bridge-mode 1))
