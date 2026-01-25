@@ -7,4 +7,6 @@ transient/
 cnfonts/
 tree-sitter/
 history
+.cache/
+tramp
 *.elc
