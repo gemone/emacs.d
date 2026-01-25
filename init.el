@@ -243,7 +243,8 @@
   (completion-styles '(orderless basic))
   (completion-category-overrides '((file (styles partial-completion))))
   (completion-category-defaults nil) ;; Disable defaults, use our settings
-  (completion-pcm-leading-wildcard t)) ;; Emacs 31: partial-completion behaves like substring
+  (completion-pcm-leading-wildcard t) ;; Emacs 31: partial-completion behaves like substring
+  (orderless-matching-styles '(orderless-literal orderless-regexp orderless-flex)))
 
 ;;; 06 - Tools
 (use-package consult
@@ -456,115 +457,3 @@
   (markdown-command "multimarkdown")
   :bind (:map markdown-mode-map
               ("C-c C-e" . markdown-do)))
-
-;;; 08 - Terminal
-;; EAT (Emulate A Terminal) - Fast terminal emulator
-
-(use-package eat
-  :ensure t
-  :preface
-  ;; Terminal helper functions (defined before package loads)
-  (defun gemo--find-terminal-window ()
-    "Find any visible terminal window."
-    (catch 'found
-      (dolist (win (window-list))
-        (with-current-buffer (window-buffer win)
-          (when (derived-mode-p 'eat-mode)
-            (throw 'found win))))
-      nil))
-
-  ;;;###autoload
-  (defun gemo/toggle-term ()
-    "Toggle EAT terminal in bottom window.
-If a terminal is visible, hide it. Otherwise, create/show one."
-    (interactive)
-    (let ((term-win (gemo--find-terminal-window)))
-      (if term-win
-          (delete-window term-win)
-        (select-window (split-window-below))
-        (eat (getenv "SHELL"))
-        (balance-windows))))
-
-  ;;;###autoload
-  (defun gemo/new-terminal ()
-    "Always create a new EAT terminal in bottom window."
-    (interactive)
-    (select-window (split-window-below))
-    (eat (getenv "SHELL"))
-    (balance-windows))
-  :custom
-  (eat-kill-buffer-on-exit t)      ; Kill buffer when shell exits
-  (eat-enable-shell-prompt-annotation t)  ; Better prompt handling
-  (eat-enable-directory-tracking t) ; Track directory changes
-  (eat-term-name "xterm-256color")) ; Fix terminal type issue
-
-;;; 09 - Code (LSP)
-;; LSP client configuration using lsp-bridge
-
-(use-package posframe
-  :ensure t
-  :demand t)
-
-(use-package yaml
-  :ensure t
-  :demand t)
-
-(use-package yasnippet
-  :ensure t
-  :config
-  (yas-global-mode 1))
-
-(use-package lsp-bridge
-  :ensure (:host github :repo "manateelazycat/lsp-bridge"
-           :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
-           :build (:not compile))
-  :after (posframe markdown-mode yaml yasnippet)
-  :preface
-  ;; Python virtual environment for lsp-bridge
-  (defconst gemo/lsp-bridge-venv-dir
-    (expand-file-name ".cache/venv/lsp-bridge" user-emacs-directory)
-    "Directory for lsp-bridge Python virtual environment.")
-
-  (defun gemo/lsp-bridge-init-python-env ()
-    "Initialize Python virtual environment for lsp-bridge."
-    (interactive)
-    (unless (file-exists-p gemo/lsp-bridge-venv-dir)
-      (make-directory gemo/lsp-bridge-venv-dir t)
-      (message "Creating lsp-bridge Python virtual environment...")
-      (call-process "python3" nil nil t "-m" "venv" gemo/lsp-bridge-venv-dir)
-      (message "Installing lsp-bridge Python dependencies...")
-      (let ((pip (expand-file-name "bin/pip3" gemo/lsp-bridge-venv-dir)))
-        (call-process pip nil nil t "install"
-                      "epc" "orjson" "sexpdata" "six" "setuptools"
-                      "paramiko" "rapidfuzz" "watchdog" "packaging"
-                      "--upgrade"))
-      (message "✓ lsp-bridge Python environment initialized!")))
-
-  ;; Initialize Python environment
-  (gemo/lsp-bridge-init-python-env)
-
-  ;; Set Python command to use virtual environment
-  (setq lsp-bridge-python-command
-        (expand-file-name "bin/python" gemo/lsp-bridge-venv-dir))
-  :custom
-  (lsp-bridge-enable-log nil)
-  (lsp-bridge-complete-single-char t)
-  :general
-  ;; Leader key bindings
-  (gemo/leader-keys
-    "l"  '(:ignore t :which-key "lsp")
-    "ld" '(lsp-bridge-find-def :which-key "Go to definition")
-    "lh" '(lsp-bridge-find-references :which-key "Find references")
-    "ln" '(lsp-bridge-rename :which-key "Rename")
-    "lr" '(lsp-bridge-restart-process :which-key "Restart LSP")
-    "ls" '(lsp-bridge-search-workspace-symbol :which-key "Search symbol"))
-  ;; Evil normal mode key bindings
-  (:keymaps 'evil-normal-state-map
-    "gd" '(lsp-bridge-find-def :which-key "Go to definition")
-    "gD" '(lsp-bridge-find-type-def :which-key "Go to type definition")
-    "gr" '(lsp-bridge-find-references :which-key "Find references")
-    "K" '(lsp-bridge-popup-documentation :which-key "Show documentation"))
-  :config
-  ;; Add Emacs Lisp mode to auto-enable list
-  (add-to-list 'lsp-bridge-default-mode-hooks 'emacs-lisp-mode-hook)
-  (global-lsp-bridge-mode 1))
