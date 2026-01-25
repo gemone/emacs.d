@@ -205,10 +205,10 @@
   ;; Use Emacs state in cnfonts-ui-mode to avoid evil keybinding conflicts
   (with-eval-after-load 'evil
     (add-to-list 'evil-emacs-state-modes 'cnfonts-ui-mode))
-  :general
-  (:keymaps 'cnfonts-mode-map
-   "C--" #'cnfonts-decrease-fontsize
-   "C-=" #'cnfonts-increase-fontsize))
+  :bind
+  (:map cnfonts-mode-map
+        ("C--" . cnfonts-decrease-fontsize)
+        ("C-=" . cnfonts-increase-fontsize)))
 
 (use-package unicad
   :ensure t
@@ -222,10 +222,10 @@
   (vertico-mode)
   :custom
   (vertico-cycle t)
-  :general
-  (:keymaps 'vertico-map
-	    "C-j" #'vertico-next
-	    "C-k" #'vertico-previous))
+  :bind
+  (:map vertico-map
+        ("C-j" . vertico-next)
+        ("C-k" . vertico-previous)))
 
 (use-package savehist
   :ensure nil ; Built-in
