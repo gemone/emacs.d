@@ -268,6 +268,57 @@
     "g"  '(:ignore t :which-key "git")
     "gg" '(magit-status :which-key "Magit status")))
 
+;; Zoxide - Smart directory jump
+(use-package zoxide
+  :ensure (:type git :host sourcehut :repo "vonfry/zoxide.el")
+  :hook (dired-mode . (lambda ()
+                        (local-set-key (kbd "P") 'zoxide-open-with-dired)))
+  :config
+  (defun zoxide-open-with-dired ()
+    "Open zoxide directory in dired."
+    (interactive)
+    (if current-prefix-arg
+        (zoxide-open-with nil (lambda (file) (dired-other-window file)) t)
+      (zoxide-open-with nil (lambda (file) (dired file)) t)))
+  :general
+  (gemo/leader-keys
+    "j"  '(:ignore t :which-key "jump")
+    "jz" '(zoxide-travel :which-key "Zoxide travel")))
+
+;; Dired enhancements (Purcell style)
+(use-package dired
+  :ensure nil
+  :config
+  ;; DWIM target
+  (setq-default dired-dwim-target t)
+  ;; Load dired-x
+  (require 'dired-x)
+  :custom
+  (dired-kill-when-opening-new-dired-buffer t)
+  :general
+  (gemo/leader-keys
+    "d"  '(:ignore t :which-key "dired")
+    "dd" '(dired-jump :which-key "Jump to dired")
+    "dj" '(dired-jump :which-key "Jump to file in dired"))
+  :bind
+  (:map dired-mode-map
+        ("C-c C-j" . dired-jump)
+        ("a" . dired-find-alternate-file)  ; reuse buffer
+        ("i" . dired-subdir-insert)        ; insert subdir
+        ("C-k" . dired-do-kill-lines)     ; hide lines
+        ("*" . nil)))                      ; disable * prefix
+
+(use-package diredfl
+  :ensure t
+  :hook (dired-mode . diredfl-mode)
+  :config (diredfl-global-mode))
+
+(use-package nerd-icons-dired
+  :ensure t
+  :hook (dired-mode . nerd-icons-dired-mode)
+  :config
+  (setq nerd-icons-dired-monochrome nil))  ; Default size for better display
+
 ;;; 07 - Code (Coding-Mode)
 
 (use-package treesit
