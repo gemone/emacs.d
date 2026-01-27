@@ -135,17 +135,10 @@ Used as :around advice for eglot-ensure."
 (use-package doom-modeline
   :ensure t
   :custom
-  (doom-modeline-icon t)
-  (doom-modeline-major-mode-icon t)
-  (doom-modeline-major-mode-color-icon t)
+  (doom-modeline-icon nil)
+  (doom-modeline-major-mode-icon nil)
+  (doom-modeline-major-mode-color-icon nil)
   :init (doom-modeline-mode 1))
-
-(use-package nerd-icons
-  :ensure t
-  :config
-  (setq nerd-icons-scale-factor 1.0)
-  (when (display-graphic-p)
-    (setq nerd-icons-font-family "CaskaydiaCove Nerd Font")))
 
 ;;; 04 - Font Configuration
 (use-package cnfonts
@@ -481,13 +474,6 @@ Used as :around advice for eglot-ensure."
   :ensure t
   :hook (dired-mode . diredfl-mode)
   :config (diredfl-global-mode))
-
-(use-package nerd-icons-dired
-  :ensure t
-  :hook (dired-mode . nerd-icons-dired-mode)
-  :config
-  (setq nerd-icons-dired-monochrome nil))
-
 (use-package zoxide
   :ensure (:type git :host sourcehut :repo "vonfry/zoxide.el")
   :hook (dired-mode . (lambda ()
