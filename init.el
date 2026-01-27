@@ -11,7 +11,41 @@
           (lambda ()
             (setq gc-cons-threshold (* 2 1000 1000)
                   gc-cons-percentage 0.1
-                  file-name-handler-alist default-file-name-handler-alist)))
+                  file-name-handler-alist default-file-name-handler-alist)
+
+            ;; Windows-specific optimizations
+            (when (eq system-type 'windows-nt)
+              ;; Speed up font rendering
+              (setq inhibit-compacting-font-cache t)
+              ;; Speed up projectile (if installed)
+              (setq projectile-git-submodule-command nil))))
+
+;;; 01.1 - Environment Variables (PATH)
+;; Ensure Emacs inherits system PATH on all platforms
+(defun gemo/inherit-system-path ()
+  "Inherit system PATH from shell on all platforms."
+  (interactive)
+  (let ((path
+         (cond
+          ;; Windows: Get PATH from PowerShell (both User and System)
+          ((eq system-type 'windows-nt)
+           (let ((user-path (shell-command-to-string "powershell.exe -NoProfile -Command \"echo [Environment]::GetEnvironmentVariable(\\\"Path\\\", \\\"User\\\")\"")))
+             (let ((system-path (shell-command-to-string "powershell.exe -NoProfile -Command \"echo [Environment]::GetEnvironmentVariable(\\\"Path\\\", \\\"Machine\\\")\"")))
+               (concat user-path path-separator system-path))))
+          ;; Unix-like (macOS/Linux): Get PATH from shell (zsh/bash)
+          (t
+           (let ((shell (or (getenv "SHELL") "/bin/bash")))
+             (shell-command-to-string (concat shell " -l -c 'echo $PATH'")))))))
+    ;; Remove trailing newline and set PATH
+    (setq path (replace-regexp-in-string "[\r\n]+$" "" path))
+    (setenv "PATH" path)
+    ;; Update exec-path
+    (setq exec-path (append (split-string path path-separator) exec-path))
+    ;; Remove duplicates
+    (setq exec-path (delete-dups exec-path))))
+
+;; Inherit system PATH at startup
+(gemo/inherit-system-path)
 
 ;;; 01 - Package Manager (Elpaca)
 (defvar elpaca-installer-version 0.11)
@@ -129,7 +163,6 @@ Used as :around advice for eglot-ensure."
   :demand t
   :config
   (load-theme 'doom-one t)
-  (doom-themes-neotree-config)
   (doom-themes-org-config))
 
 (use-package doom-modeline
@@ -351,6 +384,29 @@ Used as :around advice for eglot-ensure."
   :ensure t
   :hook (prog-mode . rainbow-delimiters-mode))
 
+;; eldoc-mouse for hover documentation (GUI only)
+(use-package eldoc-mouse
+  :ensure t
+  :if (display-graphic-p)
+  :after (eglot)
+  :hook (eglot-managed-mode emacs-lisp-mode)
+  :general
+  (:keymaps 'eldoc-mouse-mode-map
+            :states 'normal
+            "K" #'eldoc-mouse-pop-doc-at-cursor)
+  :custom
+  (eldoc-mouse-mouse-timer 0.5))  ; Delay in seconds before showing doc on hover
+
+;; Terminal mode: fallback to eldoc-doc-buffer
+(use-package emacs
+  :ensure nil
+  :if (not (display-graphic-p))
+  :hook (prog-mode . eldoc-mode)
+  :general
+  (:states 'normal
+           :keymaps 'prog-mode-map
+           "K" #'eldoc-doc-buffer))
+
 ;; ============================================
 ;; Angular Development Environment
 ;; ============================================
@@ -360,16 +416,26 @@ Used as :around advice for eglot-ensure."
   :ensure t
   :mode (("\\.ts\\'" . typescript-mode)
          ("\\.tsx\\'" . typescript-mode))
-  :hook
-  ((typescript-mode . eglot-ensure))
   :config
   (setq typescript-indent-level 2)
   (setq typescript-expr-indent-offset 2))
 
-;; Web mode for HTML templates
+;; Web mode for HTML templates (including Angular components)
 (use-package web-mode
   :ensure t
   :mode (("\\.html\\'" . web-mode))
+  :hook
+  (web-mode . (lambda ()
+                ;; Configure Angular workspace for component templates
+                (when (string-match-p "\\.component\\.html\\'" (buffer-file-name))
+                  (setq-local eglot-workspace-configuration
+                              '((:typescript
+                                 (:preferCodeSnippetsOnNewLine t)
+                                 (:format
+                                  (:semicolons t
+                                   :trailingComma :es5
+                                   :indentSize 2
+                                   :tabSize 2))))))))
   :config
   (setq web-mode-markup-indent-offset 2)
   (setq web-mode-css-indent-offset 2)
@@ -379,42 +445,37 @@ Used as :around advice for eglot-ensure."
   (setq web-mode-engines-alist
         '(("angular" . "\\.component\\.html\\'"))))
 
-;; Angular mode for component templates
-(use-package angular-mode
-  :ensure t
-  :mode (("\\.component\\.html\\'" . angular-html-mode))
-  :hook
-  (angular-html-mode . (lambda ()
-                         (setq-local eglot-workspace-configuration
-                                     '((:typescript
-                                        (:preferCodeSnippetsOnNewLine t)
-                                        (:format
-                                         (:semicolons t
-                                          :trailingComma :es5
-                                          :indentSize 2
-                                          :tabSize 2))))))))
-
 
 (use-package eglot
   :ensure nil
   :demand t
   :hook (prog-mode . gemo/eglot-ensure-maybe)
   :init
-  (setq eglot-autoshutdown t
-        eglot-events-buffer-size 0
-        eglot-send-changes-idle-time 0.5
-        eglot-sync-timeout 30
-        eglot-connect-timeout 30
-        eglot-ignored-server-capabilities '(:documentFormattingProvider)
-        eglot-report-progress nil)
+  ;; Performance optimization
+  (setq eglot-autoshutdown t                  ; Auto shutdown when not needed
+        eglot-events-buffer-size 0            ; Disable debug logging for performance
+        eglot-send-changes-idle-time 0.3      ; Send changes after 0.3s idle (faster)
+        eglot-sync-timeout 30                 ; Timeout for sync requests
+        eglot-connect-timeout 30              ; Connection timeout
+        eglot-ignored-server-capabilities '(:documentFormattingProvider) ; Use external formatter
+        eglot-report-progress nil             ; Disable progress reporting
+        ;; Keep server alive even when all buffers are closed
+        eglot-connect-hook nil
+        ;; Better completion experience
+        eglot-completion-provider 'capf       ; Use completion-at-point-functions
+        eglot-sync-request nil                ; Don't block for type info
+        ;; workspace configuration optimization
+        eglot-workspace-configuration
+        '(; General settings
+          (diagnostics . ((t . ((unusedLocals . :json-false)
+                               (unnecessaryCode . :json-false)))))))
   :general
-  (gemo/leader-keys
-    "c"  '(:ignore t :which-key "code/lsp")
-    "ca" '(eglot-code-actions :which-key "Code actions")
-    "cr" '(eglot-rename :which-key "Rename symbol")
-    "cf" '(eglot-format :which-key "Format buffer")
-    "cd" '(xref-find-definitions :which-key "Go to definition")
-    "cD" '(xref-find-references :which-key "Find references"))
+  (:states 'normal
+           :keymaps 'prog-mode-map
+           "gd" #'xref-find-definitions
+           "gr" #'xref-find-references
+           "gD" #'eglot-find-typeDefinition
+           "gR" #'eglot-rename)
   :config
   ;; TypeScript Language Server
   (add-to-list 'eglot-server-programs
@@ -425,10 +486,19 @@ Used as :around advice for eglot-ensure."
                `(web-mode . ("ngserver" "--stdio"
                              "--logFile" ,(expand-file-name "ngserver.log" temporary-file-directory))))
 
-  (advice-add 'eglot-ensure :around #'gemo/eglot-ensure-if-appropriate))
+  ;; Optimize for faster response
+  (fset 'json-bool 'identity)  ; Speed up JSON bool conversion
 
-(use-package reformatter
-  :ensure t)
+  ;; Add advice for conditional startup
+  (advice-add 'eglot-ensure :around #'gemo/eglot-ensure-if-appropriate)
+
+  ;; Use eldoc for signature help (terminal mode only, GUI uses eldoc-mouse)
+  (add-hook 'eglot-managed-mode-hook
+            (lambda ()
+              ;; Only enable eldoc-mode in terminal mode
+              ;; GUI mode uses eldoc-mouse instead
+              (unless (display-graphic-p)
+                (eldoc-mode +1)))))
 
 (use-package zig-mode
   :ensure t
@@ -455,7 +525,9 @@ Used as :around advice for eglot-ensure."
          ("\\.md\\'" . markdown-mode)
          ("\\.markdown\\'" . markdown-mode))
   :custom
-  (markdown-command "multimarkdown")
+  (markdown-command (if (executable-find "multimarkdown")
+                        "multimarkdown"
+                      "markdown"))
   (markdown-fontify-code-blocks-natively t)
   :bind
   (:map markdown-mode-map
@@ -475,7 +547,7 @@ Used as :around advice for eglot-ensure."
   (gemo/leader-keys
     "d"  '(:ignore t :which-key "dired")
     "dd" '(dired-jump :which-key "Jump to dired")
-    "dj" '(dired-jump :which-key "Jump to file in dired"))
+    "dD" '(dired-jump-other-window :which-key "Jump to dired other window"))
   :bind
   (:map dired-mode-map
         ("C-c C-j" . dired-jump)
