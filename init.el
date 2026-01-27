@@ -1,4 +1,4 @@
-;;; init.el --- Main Emacs configuration -*- lexical-binding: t; -*-
+;; init.el --- Main Emacs configuration -*- lexical-binding: t; -*-
 
 ;;; 00 - Performance Optimization
 (defvar default-file-name-handler-alist file-name-handler-alist)
@@ -334,6 +334,15 @@ Used as :around advice for eglot-ensure."
 		  ("||"     . ?∨)
 		  ("not"    . ?¬)))
   (setq prettify-symbols-unprettify-at-point 'right-edge))
+
+;; Smartparens configuration
+(use-package smartparens
+  :ensure t
+  :hook (prog-mode . smartparens-mode)
+  :config
+  (require 'smartparens-config)
+  (sp-pair "('" nil :actions :rem)
+  (sp-pair "`" nil :actions nil))
 
 ;; ============================================
 ;; Angular Development Environment
