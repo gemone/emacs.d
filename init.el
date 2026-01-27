@@ -328,6 +328,15 @@ Used as :around advice for eglot-ensure."
 		  ("not"    . ?¬)))
   (setq prettify-symbols-unprettify-at-point 'right-edge))
 
+;; Tree-sitter automatic configuration
+(use-package treesit-auto
+  :ensure t
+  :custom
+  (treesit-auto-install 'prompt)           ; Ask before installing grammar
+  :config
+  (treesit-auto-add-to-auto-mode-alist 'all) ; Add all ts-modes to auto-mode-alist
+  (global-treesit-auto-mode))
+
 ;; Smartparens configuration
 (use-package smartparens
   :ensure t
@@ -336,6 +345,11 @@ Used as :around advice for eglot-ensure."
   (require 'smartparens-config)
   (sp-pair "('" nil :actions :rem)
   (sp-pair "`" nil :actions nil))
+
+;; Rainbow delimiters for colorful parentheses
+(use-package rainbow-delimiters
+  :ensure t
+  :hook (prog-mode . rainbow-delimiters-mode))
 
 ;; ============================================
 ;; Angular Development Environment
