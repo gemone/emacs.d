@@ -12,7 +12,14 @@
 (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 (when (display-graphic-p)
   (scroll-bar-mode -1)
-  (set-fringe-mode 10))
+  (set-fringe-mode 10)
+  ;; Ensure all scrollbar parameters are disabled
+  (setq default-frame-alist
+        (append (list '(vertical-scroll-bars . nil)
+                      '(horizontal-scroll-bars . nil)
+                      '(scroll-bar-width . 0)
+                      '(scroll-bar-height . 0))
+                default-frame-alist)))
 
 ;; Disable bell sound
 (setq visible-bell t

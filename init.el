@@ -151,6 +151,27 @@ Used as :around advice for eglot-ensure."
   (add-hook 'window-setup-hook #'toggle-frame-maximized)
   :config
   (global-display-line-numbers-mode t)
+
+  ;; Disable scrollbars for current frame
+  (set-frame-parameter nil 'scroll-bar-width nil)
+  (set-frame-parameter nil 'scroll-bar-height nil)
+  (set-frame-parameter nil 'vertical-scroll-bars nil)
+  (set-frame-parameter nil 'horizontal-scroll-bars nil)
+
+  ;; Apply settings to new frames
+  (add-hook 'after-make-frame-functions
+            (lambda (frame)
+              (with-selected-frame frame
+                (set-frame-parameter frame 'scroll-bar-width nil)
+                (set-frame-parameter frame 'scroll-bar-height nil)
+                (set-frame-parameter frame 'vertical-scroll-bars nil)
+                (set-frame-parameter frame 'horizontal-scroll-bars nil))))
+
+  ;; Fringe and window divider settings
+  (setf (frame-parameter nil 'right-divider-width) 0)
+  (setf (frame-parameter nil 'bottom-divider-width) 0)
+  (setq fringe-mode '(8 . 8))  ; 设置左右 fringe 宽度
+
   :custom
   (context-menu-mode t)
   (enable-recursive-minibuffers t)
