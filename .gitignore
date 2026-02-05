@@ -10,3 +10,16 @@ history
 .cache/
 tramp
 *.elc
+
+# Local configuration (not tracked)
+early-init.local.el
+init.local.el
+options.local.el
+
+# Emacs persistent data files (*.eld)
+projects
+*.eld
+
+# LSP related
+.lsp-session*
+lsp-mode-version-cache

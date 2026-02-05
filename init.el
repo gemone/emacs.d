@@ -1,5 +1,21 @@
 ;; init.el --- Main Emacs configuration -*- lexical-binding: t; -*-
 
+;;; 00.1 - Load Options
+;; Load default variable definitions
+(let ((options (expand-file-name "options.el" user-emacs-directory)))
+  (when (file-exists-p options)
+    (load options)))
+
+;; Load local configuration overrides
+(let ((options-local (expand-file-name "options.local.el" user-emacs-directory)))
+  (when (file-exists-p options-local)
+    (load options-local)))
+
+;; Load early-init.local.el if it exists (for additional early init)
+(let ((early-init-local (expand-file-name "early-init.local.el" user-emacs-directory)))
+  (when (file-exists-p early-init-local)
+    (load early-init-local)))
+
 ;;; 00 - Performance Optimization
 (defvar default-file-name-handler-alist file-name-handler-alist)
 (setq gc-cons-threshold most-positive-fixnum
@@ -114,27 +130,19 @@
   (other-window 1)
   (ansi-term "zsh"))
 
-;; Eglot helper functions
-(defun gemo/eglot-should-manage-p ()
-  "Check if current buffer should be managed by Eglot."
-  (and (buffer-file-name)                           ; Must be a file buffer
-       (not (string-prefix-p " " (buffer-name)))    ; Not a temporary buffer
-       (not (string-match-p "markdown-code-fontification" (buffer-name))) ; Not Markdown code block
-       (not (string-match-p "\\` \\*" (buffer-name))))) ; Not internal buffer
+;; LSP helper functions
+(defun gemo/lsp-should-manage-p ()
+  "Check if current buffer should be managed by LSP."
+  (and (buffer-file-name)
+       (not (string-prefix-p " " (buffer-name)))
+       (not (string-match-p "markdown-code-fontification" (buffer-name)))
+       (not (string-match-p "\\` \\*" (buffer-name)))))
 
-(defun gemo/eglot-ensure-maybe ()
-  "Conditionally start Eglot based on buffer properties.
-This function is used as a hook to avoid starting Eglot in temporary buffers."
+(defun gemo/lsp-ensure-maybe ()
+  "Conditionally start LSP based on buffer properties."
   (unless (or (derived-mode-p 'emacs-lisp-mode 'lisp-mode 'makefile-mode 'snippet-mode 'ron-mode)
-              (not (gemo/eglot-should-manage-p)))
-    (when (eglot--guess-contact)
-      (eglot-ensure))))
-
-(defun gemo/eglot-ensure-if-appropriate (orig-fun &rest args)
-  "Only start Eglot in appropriate buffers, otherwise skip.
-Used as :around advice for eglot-ensure."
-  (when (gemo/eglot-should-manage-p)
-    (apply orig-fun args)))
+              (not (gemo/lsp-should-manage-p)))
+    (lsp-deferred)))
 
 ;; Zoxide helper
 (defun gemo/zoxide-open-with-dired ()
@@ -405,28 +413,213 @@ Used as :around advice for eglot-ensure."
   :ensure t
   :hook (prog-mode . rainbow-delimiters-mode))
 
-;; eldoc-mouse for hover documentation (GUI only)
-(use-package eldoc-mouse
-  :ensure t
-  :if (display-graphic-p)
-  :after (eglot)
-  :hook (eglot-managed-mode emacs-lisp-mode)
-  :general
-  (:keymaps 'eldoc-mouse-mode-map
-            :states 'normal
-            "K" #'eldoc-mouse-pop-doc-at-cursor)
-  :custom
-  (eldoc-mouse-mouse-timer 0.5))  ; Delay in seconds before showing doc on hover
+;; ============================================
+;; Minuet AI (LLM-powered Code Completion)
+;; ============================================
 
-;; Terminal mode: fallback to eldoc-doc-buffer
-(use-package emacs
+(use-package minuet
+  :ensure t
+  :bind
+  (("M-y" . #'minuet-complete-with-minibuffer)  ; use minibuffer for completion
+   ("M-i" . #'minuet-show-suggestion)           ; use overlay for completion
+   ("C-c m" . #'minuet-configure-provider)
+   :map minuet-active-mode-map
+   ("M-p" . #'minuet-previous-suggestion)
+   ("M-n" . #'minuet-next-suggestion)
+   ("M-A" . #'minuet-accept-suggestion)
+   ("M-a" . #'minuet-accept-suggestion-line)
+   ("M-e" . #'minuet-dismiss-suggestion))
+  :init
+  (when (bound-and-true-p gemo/minuet-enabled)
+    (add-hook 'prog-mode-hook #'minuet-auto-suggestion-mode))
+  :config
+  ;; For Evil users
+  (add-hook 'minuet-active-mode-hook #'evil-normalize-keymaps))
+
+;; Configure minuet after it loads
+(with-eval-after-load 'minuet
+  (when (bound-and-true-p gemo/minuet-enabled)
+    ;; Set provider from local config
+    (when (boundp 'gemo/minuet-provider)
+      (setq minuet-provider gemo/minuet-provider))
+
+    ;; Configure based on provider type
+    (cond
+     ;; OpenAI-compatible (chat-based)
+     ((memq minuet-provider '(openai-compatible openai claude gemini))
+      (let ((options-symbol (pcase minuet-provider
+                              ('openai 'minuet-openai-options)
+                              ('openai-compatible 'minuet-openai-compatible-options)
+                              ('claude 'minuet-claude-options)
+                              ('gemini 'minuet-gemini-options))))
+        ;; Get the actual plist value
+        (when (boundp options-symbol)
+          (let ((options (symbol-value options-symbol)))
+            ;; Set model
+            (when (boundp 'gemo/minuet-model)
+              (plist-put options :model gemo/minuet-model))
+            ;; Set API key
+            (when (boundp 'gemo/minuet-api-key)
+              (plist-put options :api-key gemo/minuet-api-key))
+            ;; Set custom endpoint
+            (when (and (boundp 'gemo/minuet-endpoint) gemo/minuet-endpoint)
+              (plist-put options :end-point gemo/minuet-endpoint))
+            ;; Set optional parameters
+            (when (boundp 'gemo/minuet-max-tokens)
+              (minuet-set-optional-options options :max_tokens gemo/minuet-max-tokens))
+            ;; Set back the modified options
+            (set options-symbol options)))))
+
+     ;; OpenAI-FIM-compatible (completion-based)
+     ((memq minuet-provider '(openai-fim-compatible codestral))
+      (let ((options-symbol (pcase minuet-provider
+                              ('openai-fim-compatible 'minuet-openai-fim-compatible-options)
+                              ('codestral 'minuet-codestral-options))))
+        ;; Get the actual plist value
+        (when (boundp options-symbol)
+          (let ((options (symbol-value options-symbol)))
+            ;; Set model
+            (when (boundp 'gemo/minuet-model)
+              (plist-put options :model gemo/minuet-model))
+            ;; Set API key
+            (when (boundp 'gemo/minuet-api-key)
+              (plist-put options :api-key gemo/minuet-api-key))
+            ;; Set custom endpoint
+            (when (and (boundp 'gemo/minuet-endpoint) gemo/minuet-endpoint)
+              (plist-put options :end-point gemo/minuet-endpoint))
+            ;; Set name for FIM providers
+            (when (eq minuet-provider 'openai-fim-compatible)
+              (plist-put options :name "Custom"))
+            ;; Set optional parameters
+            (when (boundp 'gemo/minuet-max-tokens)
+              (minuet-set-optional-options options :max_tokens gemo/minuet-max-tokens))
+            ;; Set back the modified options
+            (set options-symbol options))))))
+
+    ;; Set general options
+    (when (boundp 'gemo/minuet-n-completions)
+      (setq minuet-n-completions gemo/minuet-n-completions))
+    (when (boundp 'gemo/minuet-context-window)
+      (setq minuet-context-window gemo/minuet-context-window))
+    (when (boundp 'gemo/minuet-request-timeout)
+      (setq minuet-request-timeout gemo/minuet-request-timeout))
+    (when (boundp 'gemo/minuet-debounce-delay)
+      (setq minuet-auto-suggestion-debounce-delay gemo/minuet-debounce-delay))
+    (when (boundp 'gemo/minuet-throttle-delay)
+      (setq minuet-auto-suggestion-throttle-delay gemo/minuet-throttle-delay))))
+
+;; ============================================
+;; Project Management (Projectile + project.el)
+;; ============================================
+
+;; Projectile for project management
+(use-package projectile
+  :ensure t
+  :demand t
+  :custom
+  (projectile-completion-system 'default)  ; Use vertico via completion-at-point
+  (projectile-sort-order 'recentf)  ; Sort by recently active
+  (projectile-cache-file (expand-file-name ".projectile-cache" user-emacs-directory))
+  (projectile-known-projects-file (expand-file-name ".projectile-bookmarks.eld" user-emacs-directory))
+  (projectile-project-search-path '("~/projects" "~/work" "~"))  ; Project search paths
+  (projectile-globally-ignored-files '(".DS_Store" "*.elc" "node_modules" "target" "zig-cache" "zig-out"))
+  (projectile-globally-ignored-directories '(".git" "node_modules" "target" "zig-cache" "zig-out" "vendor" ".venv" "venv" "__pycache__"))
+  (projectile-indexing-method 'alien)  ; Faster indexing using external tools
+  :config
+  (projectile-mode +1)
+  ;; Integrate with project.el
+  (with-eval-after-load 'project
+    (defun project-find-projectile (dir)
+      "Find Projectile project in DIR."
+      (let ((root (projectile-project-p dir)))
+        (when root
+          (cons 'transient root))))
+    (defun project-try-projectile (dir)
+      "Try to find Projectile project in DIR."
+      (let ((root (projectile-project-p dir)))
+        (when root
+          (cons 'transient root))))
+    (add-hook 'project-find-functions #'project-try-projectile)))
+
+;; Project.el configuration
+(use-package project
   :ensure nil
-  :if (not (display-graphic-p))
-  :hook (prog-mode . eldoc-mode)
-  :general
-  (:states 'normal
-           :keymaps 'prog-mode-map
-           "K" #'eldoc-doc-buffer))
+  :custom
+  (project-list-file (expand-file-name ".project-list.eld" user-emacs-directory))
+  ;; Configure project root markers for various project types
+  (project-vc-extra-root-markers
+   '("package.json"      ; Node.js/JavaScript
+     "package-lock.json"
+     "yarn.lock"
+     "pnpm-lock.yaml"
+     "tsconfig.json"     ; TypeScript
+     "go.mod"            ; Go
+     "go.sum"
+     "Cargo.toml"        ; Rust
+     "Cargo.lock"
+     "pyproject.toml"    ; Python
+     "setup.py"
+     "requirements.txt"
+     "setup.cfg"
+     "tox.ini"
+     "pom.xml"           ; Java/Maven
+     "build.gradle"      ; Java/Gradle
+     "build.gradle.kts"
+     "settings.gradle"
+     "settings.gradle.kts"
+     "build.sbt"         ; Scala
+     "project.clj"       ; Clojure
+     "deps.edn"
+     "Gemfile"           ; Ruby
+     "Rakefile"
+     "*.gemspec"
+     "composer.json"     ; PHP
+     "mix.exs"           ; Elixir
+     "rebar.config"
+     "shard.yml"         ; Crystal
+     "dub.json"          ; D
+     "dub.sdl"
+     "junetion.json"     ; Julia
+     "Project.toml"
+     "stack.yaml"        ; Haskell
+     "cabal.project"
+     "*.cabal"
+     "pubspec.yaml"      ; Dart
+     "Cartfile"          ; Swift (Carthage)
+     "Podfile"           ; Swift (CocoaPods)
+     "xcodeproj"         ; Swift
+     "Pods"
+     "meson.build"       ; Meson
+     "CMakeLists.txt"    ; CMake
+     "CMakeCache.txt"
+     "Makefile"
+     "configure.ac"
+     "configure.in"
+     "makefile"
+     "scons.mk"
+     "SConstruct"
+     "webpack.config.js" ; Frontend build tools
+     "webpack.config.ts"
+     "rollup.config.js"
+     "rollup.config.ts"
+     "vite.config.js"
+     "vite.config.ts"
+     "turbo.json"
+     "nx.json"
+     ".angular"          ; Angular
+     "angular.json"
+     "nest-cli.json"     ; NestJS
+     "Gemfile"
+     "Rakefile"))
+  :config
+  ;; Ensure project.el can find projects using Projectile
+  (setq project-switch-commands
+        '((?f "Find file" project-find-file)
+          (?g "Find regexp" project-find-regexp)
+          (?d "Dired" project-dired)
+          (?v "VC dir" project-vc-dir)
+          (?s "Shell" project-shell)
+          (?e "Eshell" project-eshell))))
 
 ;; ============================================
 ;; Angular Development Environment
@@ -445,18 +638,6 @@ Used as :around advice for eglot-ensure."
 (use-package web-mode
   :ensure t
   :mode (("\\.html\\'" . web-mode))
-  :hook
-  (web-mode . (lambda ()
-                ;; Configure Angular workspace for component templates
-                (when (string-match-p "\\.component\\.html\\'" (buffer-file-name))
-                  (setq-local eglot-workspace-configuration
-                              '((:typescript
-                                 (:preferCodeSnippetsOnNewLine t)
-                                 (:format
-                                  (:semicolons t
-                                   :trailingComma :es5
-                                   :indentSize 2
-                                   :tabSize 2))))))))
   :config
   (setq web-mode-markup-indent-offset 2)
   (setq web-mode-css-indent-offset 2)
@@ -467,59 +648,79 @@ Used as :around advice for eglot-ensure."
         '(("angular" . "\\.component\\.html\\'"))))
 
 
-(use-package eglot
-  :ensure nil
+(use-package lsp-mode
+  :ensure t
   :demand t
-  :hook (prog-mode . gemo/eglot-ensure-maybe)
   :init
-  ;; Performance optimization
-  (setq eglot-autoshutdown t                  ; Auto shutdown when not needed
-        eglot-events-buffer-size 0            ; Disable debug logging for performance
-        eglot-send-changes-idle-time 0.3      ; Send changes after 0.3s idle (faster)
-        eglot-sync-timeout 30                 ; Timeout for sync requests
-        eglot-connect-timeout 30              ; Connection timeout
-        eglot-ignored-server-capabilities '(:documentFormattingProvider) ; Use external formatter
-        eglot-report-progress nil             ; Disable progress reporting
-        ;; Keep server alive even when all buffers are closed
-        eglot-connect-hook nil
-        ;; Better completion experience
-        eglot-completion-provider 'capf       ; Use completion-at-point-functions
-        eglot-sync-request nil                ; Don't block for type info
-        ;; workspace configuration optimization
-        eglot-workspace-configuration
-        '(; General settings
-          (diagnostics . ((t . ((unusedLocals . :json-false)
-                               (unnecessaryCode . :json-false)))))))
+  (setq lsp-keymap-prefix "C-c l"
+        lsp-auto-configure t
+        lsp-completion-provider :capf
+        lsp-prefer-capf t
+        lsp-idle-delay 0.3
+        lsp-enable-on-type-formatting nil
+        lsp-enable-folding nil
+        lsp-enable-symbol-highlighting t
+        lsp-enable-imenu t
+        lsp-enable-snippet nil
+        lsp-keep-workspace-alives nil
+        lsp-restart 'auto-restart
+        lsp-signature-auto-activate t
+        lsp-signature-render-documentation t
+        lsp-workspace-folder-watchers nil
+        lsp-enable-file-watchers nil
+        lsp-enable-text-colors nil
+        lsp-enable-indentation nil
+        lsp-log-io nil
+        lsp-print-performance nil
+        lsp-server-trace nil
+        lsp-diagnostics-provider :none
+        lsp-modeline-diagnostics-enable nil
+        lsp-headerline-breadcrumb-enable nil
+        lsp-format-on-save nil
+        lsp-before-save-edits nil
+        ;; Inlay hint settings
+        lsp-inlay-hint-enable t)
+
+  :hook
+  (prog-mode . gemo/lsp-ensure-maybe)
+  (lsp-mode . lsp-enable-which-key-integration)
+  (lsp-mode . eldoc-box-hover-mode)  ; Enable eldoc-box for LSP
+  (lsp-mode . lsp-inlay-hint-mode)   ; Enable inlay hints for type annotations
+
   :general
   (:states 'normal
            :keymaps 'prog-mode-map
            "gd" #'xref-find-definitions
            "gr" #'xref-find-references
-           "gD" #'eglot-find-typeDefinition
-           "gR" #'eglot-rename)
+           "gD" #'lsp-find-typeDefinition
+           "gR" #'lsp-rename)
+
   :config
-  ;; TypeScript Language Server
-  (add-to-list 'eglot-server-programs
-               '(typescript-mode . ("typescript-language-server" "--stdio")))
+  ;; Language-specific settings
+  (lsp-register-custom-settings
+   '(("typescript.format.enable" false)
+     ("javascript.format.enable" false)))
+  )
 
-  ;; Angular Language Server for web-mode (component templates)
-  (add-to-list 'eglot-server-programs
-               `(web-mode . ("ngserver" "--stdio"
-                             "--logFile" ,(expand-file-name "ngserver.log" temporary-file-directory))))
-
-  ;; Optimize for faster response
-  (fset 'json-bool 'identity)  ; Speed up JSON bool conversion
-
-  ;; Add advice for conditional startup
-  (advice-add 'eglot-ensure :around #'gemo/eglot-ensure-if-appropriate)
-
-  ;; Use eldoc for signature help (terminal mode only, GUI uses eldoc-mouse)
-  (add-hook 'eglot-managed-mode-hook
-            (lambda ()
-              ;; Only enable eldoc-mode in terminal mode
-              ;; GUI mode uses eldoc-mouse instead
-              (unless (display-graphic-p)
-                (eldoc-mode +1)))))
+;; eldoc-box for better documentation display
+(use-package eldoc-box
+  :ensure t
+  :after lsp-mode
+  :demand t
+  :custom
+  (eldoc-box-max-height 20)
+  (eldoc-box-max-width 80)
+  (eldoc-box-delay 0.3)
+  (eldoc-box-only-show-symbol-once t)
+  (eldoc-box-clear-with-C-g t)
+  :general
+  (:states 'normal
+           :keymaps 'prog-mode-map
+           "K" #'eldoc-box-help-at-point)
+  :config
+  ;; Disable in terminal mode
+  (unless (display-graphic-p)
+    (setq eldoc-box-hover-mode nil)))
 
 (use-package zig-mode
   :ensure t
@@ -535,10 +736,7 @@ Used as :around advice for eglot-ensure."
     "mc" '(zig-compile :which-key "Compile")
     "mr" '(zig-run :which-key "Run")
     "mt" '(zig-test :which-key "Run tests")
-    "mf" '(zig-format-buffer :which-key "Format buffer"))
-  :config
-  (with-eval-after-load 'eglot
-    (add-to-list 'eglot-server-programs '(zig-mode . ("zls")))))
+    "mf" '(zig-format-buffer :which-key "Format buffer")))
 
 (use-package markdown-mode
   :ensure t
@@ -620,5 +818,11 @@ Used as :around advice for eglot-ensure."
   :config
   (setq rg-group-result t
         rg-hide-command t))
+
+;;; 99 - Load Local Init
+;; Load init.local.el if it exists (for local user configuration)
+(let ((init-local (expand-file-name "init.local.el" user-emacs-directory)))
+  (when (file-exists-p init-local)
+    (load init-local)))
 
 ;;; init.el ends here
