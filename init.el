@@ -414,101 +414,6 @@
   :hook (prog-mode . rainbow-delimiters-mode))
 
 ;; ============================================
-;; Minuet AI (LLM-powered Code Completion)
-;; ============================================
-
-(use-package minuet
-  :ensure t
-  :bind
-  (("M-y" . #'minuet-complete-with-minibuffer)  ; use minibuffer for completion
-   ("M-i" . #'minuet-show-suggestion)           ; use overlay for completion
-   ("C-c m" . #'minuet-configure-provider)
-   :map minuet-active-mode-map
-   ("M-p" . #'minuet-previous-suggestion)
-   ("M-n" . #'minuet-next-suggestion)
-   ("M-A" . #'minuet-accept-suggestion)
-   ("M-a" . #'minuet-accept-suggestion-line)
-   ("M-e" . #'minuet-dismiss-suggestion))
-  :init
-  (when (bound-and-true-p gemo/minuet-enabled)
-    (add-hook 'prog-mode-hook #'minuet-auto-suggestion-mode))
-  :config
-  ;; For Evil users
-  (add-hook 'minuet-active-mode-hook #'evil-normalize-keymaps))
-
-;; Configure minuet after it loads
-(with-eval-after-load 'minuet
-  (when (bound-and-true-p gemo/minuet-enabled)
-    ;; Set provider from local config
-    (when (boundp 'gemo/minuet-provider)
-      (setq minuet-provider gemo/minuet-provider))
-
-    ;; Configure based on provider type
-    (cond
-     ;; OpenAI-compatible (chat-based)
-     ((memq minuet-provider '(openai-compatible openai claude gemini))
-      (let ((options-symbol (pcase minuet-provider
-                              ('openai 'minuet-openai-options)
-                              ('openai-compatible 'minuet-openai-compatible-options)
-                              ('claude 'minuet-claude-options)
-                              ('gemini 'minuet-gemini-options))))
-        ;; Get the actual plist value
-        (when (boundp options-symbol)
-          (let ((options (symbol-value options-symbol)))
-            ;; Set model
-            (when (boundp 'gemo/minuet-model)
-              (plist-put options :model gemo/minuet-model))
-            ;; Set API key
-            (when (boundp 'gemo/minuet-api-key)
-              (plist-put options :api-key gemo/minuet-api-key))
-            ;; Set custom endpoint
-            (when (and (boundp 'gemo/minuet-endpoint) gemo/minuet-endpoint)
-              (plist-put options :end-point gemo/minuet-endpoint))
-            ;; Set optional parameters
-            (when (boundp 'gemo/minuet-max-tokens)
-              (minuet-set-optional-options options :max_tokens gemo/minuet-max-tokens))
-            ;; Set back the modified options
-            (set options-symbol options)))))
-
-     ;; OpenAI-FIM-compatible (completion-based)
-     ((memq minuet-provider '(openai-fim-compatible codestral))
-      (let ((options-symbol (pcase minuet-provider
-                              ('openai-fim-compatible 'minuet-openai-fim-compatible-options)
-                              ('codestral 'minuet-codestral-options))))
-        ;; Get the actual plist value
-        (when (boundp options-symbol)
-          (let ((options (symbol-value options-symbol)))
-            ;; Set model
-            (when (boundp 'gemo/minuet-model)
-              (plist-put options :model gemo/minuet-model))
-            ;; Set API key
-            (when (boundp 'gemo/minuet-api-key)
-              (plist-put options :api-key gemo/minuet-api-key))
-            ;; Set custom endpoint
-            (when (and (boundp 'gemo/minuet-endpoint) gemo/minuet-endpoint)
-              (plist-put options :end-point gemo/minuet-endpoint))
-            ;; Set name for FIM providers
-            (when (eq minuet-provider 'openai-fim-compatible)
-              (plist-put options :name "Custom"))
-            ;; Set optional parameters
-            (when (boundp 'gemo/minuet-max-tokens)
-              (minuet-set-optional-options options :max_tokens gemo/minuet-max-tokens))
-            ;; Set back the modified options
-            (set options-symbol options))))))
-
-    ;; Set general options
-    (when (boundp 'gemo/minuet-n-completions)
-      (setq minuet-n-completions gemo/minuet-n-completions))
-    (when (boundp 'gemo/minuet-context-window)
-      (setq minuet-context-window gemo/minuet-context-window))
-    (when (boundp 'gemo/minuet-request-timeout)
-      (setq minuet-request-timeout gemo/minuet-request-timeout))
-    (when (boundp 'gemo/minuet-debounce-delay)
-      (setq minuet-auto-suggestion-debounce-delay gemo/minuet-debounce-delay))
-    (when (boundp 'gemo/minuet-throttle-delay)
-      (setq minuet-auto-suggestion-throttle-delay gemo/minuet-throttle-delay))))
-
-;; ============================================
 ;; Project Management (Projectile + project.el)
 ;; ============================================
 
@@ -818,6 +723,82 @@
   :config
   (setq rg-group-result t
         rg-hide-command t))
+
+;; ============================================
+;; Common Lisp Development (SLIME)
+;; ============================================
+
+;; Helper function to find Lisp implementation
+(defun gemo/find-lisp-implementation ()
+  "Find Common Lisp implementation in PATH."
+  (or (executable-find "sbcl")
+      (executable-find "ccl")
+      (executable-find "clisp")
+      (executable-find "ecl")
+      (executable-find "abcl")
+      "sbcl"))  ; fallback to sbcl (may need to install)
+
+(use-package slime
+  :ensure t
+  :mode (("\\.cl\\'" . lisp-mode)
+         ("\\.lisp\\'" . lisp-mode)
+         ("\\.lsp\\'" . lisp-mode))
+  :commands slime
+  :custom
+  ;; Choose your Lisp implementation
+  (inferior-lisp-program (gemo/find-lisp-implementation))
+  (slime-lisp-implementations
+   `(;; Try to find SBCL in common locations
+     (sbcl (,(or (executable-find "sbcl") "/opt/homebrew/bin/sbcl" "/usr/local/bin/sbcl" "sbcl"))
+            :coding-system utf-8-unix)
+     (sbcl-mt (,(or (executable-find "sbcl") "/opt/homebrew/bin/sbcl" "/usr/local/bin/sbcl" "sbcl")
+               "--dynamic-space-size" "4096")
+            :coding-system utf-8-unix)
+     (ccl (,(or (executable-find "ccl") "/usr/local/bin/ccl" "ccl"))
+          :coding-system utf-8-unix)
+     (clisp (,(or (executable-find "clisp") "/usr/bin/clisp" "clisp")
+            "-K" "full")
+            :coding-system utf-8-unix)))
+  (slime-default-lisp 'sbcl)
+  ;; SLIME behavior
+  (slime-complete-symbol-function 'slime-fuzzy-complete-symbol)
+  (slime-enable-evaluate-in-emacs t)
+  (slime-export-symbol-representation-auto t)
+  (slime-repl-return-behaviour :send-only-if-complete)
+  (slime-autodoc-use-multiline-p t)
+  (slime-description-autofocus t)
+  ;; UI improvements
+  (slime-compilation-finished-hook 'slime-maybe-show-compilation-log)
+  (slime-repl-history-file (expand-file-name ".slime-history" user-emacs-directory))
+  (slime-repl-history-remove-duplicates t)
+  :config
+  (slime-setup '(slime-fancy
+                 slime-fuzzy
+                 slime-indentation
+                 slime-sbcl-exts
+                 slime-repl
+                 slime-autodoc
+                 slime-tramp
+                 slime-asdf))
+  ;; Keybindings for SLIME REPL
+  :general
+  (:keymaps 'slime-repl-mode-map
+            "C-c C-z" #'switch-to-buffer
+            "C-c C-y" #'slime-repl-yank)
+  (gemo/leader-keys
+    "l"  '(:ignore t :which-key "lisp")
+    "ls" '(slime-selector :which-key "SLIME selector")
+    "li" '(slime :which-key "Start SLIME")
+    "lr" '(slime-reset-connection :which-key "Reset connection")
+    "lc" '(slime-interrupt :which-key "Interrupt")
+    "lq" '(slime-quit-lisp :which-key "Quit SLIME")))
+
+(use-package slime-company
+  :ensure t
+  :after (slime company)
+  :config
+  (setq slime-company-completion 'fuzzy
+        slime-company-after-completion 'slime-company-just-one-space))
 
 ;;; 99 - Load Local Init
 ;; Load init.local.el if it exists (for local user configuration)
