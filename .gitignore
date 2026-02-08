@@ -23,3 +23,5 @@ projects
 # LSP related
 .lsp-session*
 lsp-mode-version-cache
+
+.slime*

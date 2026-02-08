@@ -724,81 +724,15 @@
   (setq rg-group-result t
         rg-hide-command t))
 
-;; ============================================
 ;; Common Lisp Development (SLIME)
-;; ============================================
-
-;; Helper function to find Lisp implementation
-(defun gemo/find-lisp-implementation ()
-  "Find Common Lisp implementation in PATH."
-  (or (executable-find "sbcl")
-      (executable-find "ccl")
-      (executable-find "clisp")
-      (executable-find "ecl")
-      (executable-find "abcl")
-      "sbcl"))  ; fallback to sbcl (may need to install)
 
 (use-package slime
   :ensure t
-  :mode (("\\.cl\\'" . lisp-mode)
-         ("\\.lisp\\'" . lisp-mode)
-         ("\\.lsp\\'" . lisp-mode))
-  :commands slime
-  :custom
-  ;; Choose your Lisp implementation
-  (inferior-lisp-program (gemo/find-lisp-implementation))
-  (slime-lisp-implementations
-   `(;; Try to find SBCL in common locations
-     (sbcl (,(or (executable-find "sbcl") "/opt/homebrew/bin/sbcl" "/usr/local/bin/sbcl" "sbcl"))
-            :coding-system utf-8-unix)
-     (sbcl-mt (,(or (executable-find "sbcl") "/opt/homebrew/bin/sbcl" "/usr/local/bin/sbcl" "sbcl")
-               "--dynamic-space-size" "4096")
-            :coding-system utf-8-unix)
-     (ccl (,(or (executable-find "ccl") "/usr/local/bin/ccl" "ccl"))
-          :coding-system utf-8-unix)
-     (clisp (,(or (executable-find "clisp") "/usr/bin/clisp" "clisp")
-            "-K" "full")
-            :coding-system utf-8-unix)))
-  (slime-default-lisp 'sbcl)
-  ;; SLIME behavior
-  (slime-complete-symbol-function 'slime-fuzzy-complete-symbol)
-  (slime-enable-evaluate-in-emacs t)
-  (slime-export-symbol-representation-auto t)
-  (slime-repl-return-behaviour :send-only-if-complete)
-  (slime-autodoc-use-multiline-p t)
-  (slime-description-autofocus t)
-  ;; UI improvements
-  (slime-compilation-finished-hook 'slime-maybe-show-compilation-log)
-  (slime-repl-history-file (expand-file-name ".slime-history" user-emacs-directory))
-  (slime-repl-history-remove-duplicates t)
   :config
-  (slime-setup '(slime-fancy
-                 slime-fuzzy
-                 slime-indentation
-                 slime-sbcl-exts
-                 slime-repl
-                 slime-autodoc
-                 slime-tramp
-                 slime-asdf))
-  ;; Keybindings for SLIME REPL
-  :general
-  (:keymaps 'slime-repl-mode-map
-            "C-c C-z" #'switch-to-buffer
-            "C-c C-y" #'slime-repl-yank)
-  (gemo/leader-keys
-    "l"  '(:ignore t :which-key "lisp")
-    "ls" '(slime-selector :which-key "SLIME selector")
-    "li" '(slime :which-key "Start SLIME")
-    "lr" '(slime-reset-connection :which-key "Reset connection")
-    "lc" '(slime-interrupt :which-key "Interrupt")
-    "lq" '(slime-quit-lisp :which-key "Quit SLIME")))
+  (setq inferior-lisp-program "sbcl")
+  (slime-setup '(slime-fancy)))
 
-(use-package slime-company
-  :ensure t
-  :after (slime company)
-  :config
-  (setq slime-company-completion 'fuzzy
-        slime-company-after-completion 'slime-company-just-one-space))
+
 
 ;;; 99 - Load Local Init
 ;; Load init.local.el if it exists (for local user configuration)
