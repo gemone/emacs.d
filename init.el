@@ -665,7 +665,7 @@
   :hook (dired-mode . diredfl-mode)
   :config (diredfl-global-mode))
 (use-package zoxide
-  :ensure (:type git :host sourcehut :repo "vonfry/zoxide.el")
+  :ensure t
   :after general
   :hook (dired-mode . (lambda ()
                         (local-set-key (kbd "P") 'gemo/zoxide-open-with-dired)))
@@ -723,3 +723,15 @@
     (load init-local)))
 
 ;;; init.el ends here
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages nil))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
