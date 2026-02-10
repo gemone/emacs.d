@@ -498,7 +498,9 @@
         lsp-signature-render-documentation t
         lsp-workspace-folder-watchers nil
         lsp-enable-file-watchers nil
-        lsp-enable-text-colors nil
+        lsp-enable-text-colors t
+        lsp-semantic-tokens-enable t
+        lsp-semantic-tokens-apply-modifiers t
         lsp-enable-indentation nil
         lsp-log-io nil
         lsp-print-performance nil
@@ -653,9 +655,15 @@
 
 (use-package slime
   :ensure t
+  :hook
+  (slime-description-mode . (lambda ()
+                              (setq-local font-lock-defaults '(lisp-font-lock-keywords))
+                              (font-lock-mode 1)))
   :config
-  (setq inferior-lisp-program "sbcl")
-  (slime-setup '(slime-fancy)))
+  (setq inferior-lisp-program "sbcl"
+        slime-autodoc-interval 0.5
+        slime-highlight-edges t)
+  (slime-setup '(slime-fancy slime-autodoc)))
 
 ;;; 09 - Eshell Configuration
 
