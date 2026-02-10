@@ -229,9 +229,11 @@
   :config (evil-collection-init))
 
 (use-package general
-  :ensure (:wait t)
+  :ensure t
   :demand t
   :config
+  ;; Enable use-package integration
+  (general-use-package-mode)
   (general-auto-unbind-keys)
   (general-override-mode)
   (general-create-definer gemo/leader-keys
@@ -531,6 +533,7 @@
 (use-package lsp-mode
   :ensure t
   :demand t
+  :after general
   :init
   (setq lsp-keymap-prefix "C-c l"
         lsp-auto-configure t
@@ -585,7 +588,7 @@
 ;; eldoc-box for better documentation display
 (use-package eldoc-box
   :ensure t
-  :after lsp-mode
+  :after lsp-mode general
   :demand t
   :custom
   (eldoc-box-max-height 20)
@@ -604,6 +607,7 @@
 
 (use-package zig-mode
   :ensure t
+  :after general
   :mode (("\\.zig\\'" . zig-mode)
          ("\\.zon\\'" . zig-mode))
   :custom
@@ -635,6 +639,7 @@
 ;;; 08 - File and Tools
 (use-package dired
   :ensure nil
+  :after general
   :config
   (setq-default dired-dwim-target t)
   (when (eq system-type 'darwin)
@@ -661,6 +666,7 @@
   :config (diredfl-global-mode))
 (use-package zoxide
   :ensure (:type git :host sourcehut :repo "vonfry/zoxide.el")
+  :after general
   :hook (dired-mode . (lambda ()
                         (local-set-key (kbd "P") 'gemo/zoxide-open-with-dired)))
   :general
@@ -670,6 +676,7 @@
 
 (use-package consult
   :ensure t
+  :after general
   :general
   (gemo/leader-keys
     "s"  '(:ignore t :which-key "search")
