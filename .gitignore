@@ -1,6 +1,7 @@
 backups/
 elpaca/
 elpa/
+eshell/
 auto-save/
 auto-save-list/
 transient/

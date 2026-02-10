@@ -657,7 +657,164 @@
   (setq inferior-lisp-program "sbcl")
   (slime-setup '(slime-fancy)))
 
+;;; 09 - Eshell Configuration
 
+(use-package eshell
+  :ensure nil
+  :after general
+  :custom
+  (eshell-scroll-to-bottom-on-input t)
+  (tab-always-indent 'complete)
+  (eshell-history-size 10000)
+  (eshell-save-history-on-exit t)
+  (eshell-hist-ignoredups t)
+  (eshell-where-to-jump 'begin)
+  (eshell-review-quick-commands nil)
+  (eshell-smart-space-goes-to-end t)
+  :config
+  ;; Set up aliases file
+  (setq eshell-aliases-file (expand-file-name "eshell/aliases" user-emacs-directory))
+  ;; Ensure aliases directory exists
+  (unless (file-exists-p (expand-file-name "eshell" user-emacs-directory))
+    (make-directory (expand-file-name "eshell" user-emacs-directory) t))
+  ;; Create default aliases if file doesn't exist
+  (unless (file-exists-p eshell-aliases-file)
+    (with-temp-file eshell-aliases-file
+      (insert "alias ff find-file $1\n"
+              "alias d dired $1\n"
+              "alias fd find-dired $PWD \"\"\n"
+              "alias clear gemo/eshell-clear-buffer\n"
+              "alias ll ls -l $*\n"
+              "alias la ls -la $*\n"
+              "alias lh ls -lh $*\n")))
+  :hook
+  (eshell-mode . gemo/eshell-setup)
+  :general
+  (gemo/leader-keys
+    "oe" '(eshell :which-key "Eshell"))
+  :bind
+  (:map eshell-mode-map
+        ("M-m" . beginning-of-line)
+        ("M-r" . consult-history)))
+
+;; Fish-style autosuggestions for Eshell
+(use-package capf-autosuggest
+  :ensure t
+  :hook (eshell-mode . capf-autosuggest-mode))
+
+;; Popper for window management
+(use-package popper
+  :ensure t
+  :after general
+  :custom
+  (popper-reference-buffers
+   '("\\*eshell.*"
+     flymake-diagnostics-buffer-mode
+     help-mode
+     compilation-mode))
+  (popper-window-height 15)
+  :config
+  (popper-mode 1)
+  (popper-echo-mode 1)
+  :general
+  (gemo/leader-keys
+    "tp" '(popper-toggle :which-key "Toggle popper")
+    "tn" '(popper-cycle :which-key "Cycle popper"))
+  :bind
+  (("C-;" . popper-toggle)
+   ("M-;" . popper-cycle)))
+
+;; Eshell helper functions
+(defun gemo/eshell-clear-buffer ()
+  "Clear current Eshell buffer."
+  (interactive)
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (eshell-send-input)))
+
+(defun gemo/shell-create (name)
+  "Create named eshell buffer."
+  (interactive "sName: ")
+  (eshell 'new)
+  (let ((new-buffer-name (concat "*eshell-" name "*")))
+    (rename-buffer new-buffer-name t)))
+
+;; Abbreviate home directory and shorten path segments
+(defun gemo/eshell-abbreviate-path (path)
+  "Shorten PATH by abbreviating home dir and truncating segments."
+  (let* ((home (expand-file-name "~"))
+         (path (replace-regexp-in-string (regexp-quote home) "~" path))
+         (segments (split-string path "/"))
+         (len (length segments)))
+    (if (<= len 3)
+        path
+      ;; Keep first segment, add ellipsis, keep last 2 segments
+      (concat (car segments) "/…/"
+              (string-join (last segments 2) "/")))))
+
+;; Virtual environment info (Python, node, etc.)
+(defun gemo/eshell-virtual-env-info ()
+  "Return virtual environment name if active."
+  (let ((venv (or (getenv "VIRTUAL_ENV")      ; Python venv
+                  (getenv "CONDA_PREFIX")     ; Conda
+                  (getenv "NODE_VIRTUAL_ENV") ; Node
+                  (getenv "JENV_SHELL")       ; Java
+                  (getenv "RBENV_SHELL"))))   ; Ruby
+    (when venv
+      (let ((name (file-name-nondirectory (directory-file-name venv))))
+        (propertize (format "[%s] " name)
+                    'face 'font-lock-constant-face)))))
+
+;; Git branch info for prompt
+(defun gemo/eshell-git-branch ()
+  "Return git branch name if in a git repository."
+  (when (locate-dominating-file default-directory ".git")
+    (let ((branch (car (process-lines "git" "branch" "--show-current"))))
+      (when branch
+        (propertize (format "(%s) " branch)
+                    'face 'font-lock-variable-name-face)))))
+
+;; Custom Eshell prompt
+(defun gemo/eshell-prompt ()
+  "Custom Eshell prompt with zsh-like style."
+  (concat
+   ;; Virtual environment (if any)
+   (gemo/eshell-virtual-env-info)
+   ;; User@Host (only when using sudo/remote)
+   (when (or (string-match-p "^/sudo:" default-directory)
+             (string-match-p "^/ssh:" default-directory))
+     (format "%s@%s " (user-login-name) (system-name)))
+   ;; Git branch
+   (gemo/eshell-git-branch)
+   ;; Abbreviated path
+   (propertize (gemo/eshell-abbreviate-path (eshell/pwd))
+               'face 'font-lock-keyword-face)
+   ;; Prompt symbol
+   (if (= (user-uid) 0)
+       (propertize " # " 'face 'font-lock-warning-face)
+     (propertize " λ " 'face 'font-lock-function-name-face))))
+
+;; Left prompt (the main prompt)
+(setq eshell-prompt-function 'gemo/eshell-prompt
+      eshell-prompt-regexp "^[^#λ]* [#λ] ")
+
+;; Right prompt (optional - shows exit code of last command)
+(setq eshell-rprompt-function
+      (lambda ()
+        (let ((code (eshell-last-command-status)))
+          (unless (and (numberp code) (= code 0))
+            (propertize (format "[%d]" code)
+                        'face 'font-lock-warning-face)))))
+
+(defun gemo/eshell-setup ()
+  "Eshell completion setup."
+  (setq-local completion-styles '(basic partial-completion))
+  (setq-local corfu-auto t)
+  (corfu-mode)
+  (setq-local completion-at-point-functions
+              (list (cape-capf-super
+                     #'pcomplete-completions-at-point
+                     #'cape-history))))
 
 ;;; 99 - Load Local Init
 ;; Load init.local.el if it exists (for local user configuration)
