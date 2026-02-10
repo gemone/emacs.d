@@ -19,8 +19,7 @@
 ;;; 00 - Performance Optimization
 (defvar default-file-name-handler-alist file-name-handler-alist)
 (setq gc-cons-threshold most-positive-fixnum
-      gc-cons-percentage 0.6
-      file-name-handler-alist nil
+      gc-cons-percentage 0.6 file-name-handler-alist nil
       site-run-file nil)
 
 (add-hook 'emacs-startup-hook
@@ -35,33 +34,6 @@
               (setq inhibit-compacting-font-cache t)
               ;; Speed up projectile (if installed)
               (setq projectile-git-submodule-command nil))))
-
-;;; 01.1 - Environment Variables (PATH)
-;; Ensure Emacs inherits system PATH on all platforms
-(defun gemo/inherit-system-path ()
-  "Inherit system PATH from shell on all platforms."
-  (interactive)
-  (let ((path
-         (cond
-          ;; Windows: Get PATH from PowerShell (both User and System)
-          ((eq system-type 'windows-nt)
-           (let ((user-path (shell-command-to-string "powershell.exe -NoProfile -Command \"echo [Environment]::GetEnvironmentVariable(\\\"Path\\\", \\\"User\\\")\"")))
-             (let ((system-path (shell-command-to-string "powershell.exe -NoProfile -Command \"echo [Environment]::GetEnvironmentVariable(\\\"Path\\\", \\\"Machine\\\")\"")))
-               (concat user-path path-separator system-path))))
-          ;; Unix-like (macOS/Linux): Get PATH from shell (zsh/bash)
-          (t
-           (let ((shell (or (getenv "SHELL") "/bin/bash")))
-             (shell-command-to-string (concat shell " -l -c 'echo $PATH'")))))))
-    ;; Remove trailing newline and set PATH
-    (setq path (replace-regexp-in-string "[\r\n]+$" "" path))
-    (setenv "PATH" path)
-    ;; Update exec-path
-    (setq exec-path (append (split-string path path-separator) exec-path))
-    ;; Remove duplicates
-    (setq exec-path (delete-dups exec-path))))
-
-;; Inherit system PATH at startup
-(gemo/inherit-system-path)
 
 ;;; 01 - Package Manager (package.el)
 
@@ -232,8 +204,6 @@
   :ensure t
   :demand t
   :config
-  ;; Enable use-package integration
-  (general-use-package-mode)
   (general-auto-unbind-keys)
   (general-override-mode)
   (general-create-definer gemo/leader-keys
