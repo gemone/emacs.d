@@ -65,7 +65,7 @@
 (setq-default buffer-file-coding-system 'utf-8-unix)
 
 ;; --- PERFORMANCE ---
-;; Disable package.el (using elpaca instead)
-(setq package-enable-at-startup nil)
+;; Speed up startup
+(setq package-enable-at-startup nil)  ; Will initialize in init.el
 
 ;; Create directories if they don't exist
