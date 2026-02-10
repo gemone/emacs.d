@@ -57,26 +57,6 @@
 (setq use-package-always-defer t)   ; Defer loading by default
 
 ;;; 02 - Helper Functions
-;; Terminal functions
-(defun gemo/toggle-term ()
-  "Toggle terminal popup."
-  (interactive)
-  (let ((buf (get-buffer "*terminal*")))
-    (if (and buf (get-buffer-window buf))
-        (delete-window (get-buffer-window buf))
-      (split-window-sensibly (selected-window) nil t)
-      (other-window 1)
-      (if buf
-          (switch-to-buffer buf)
-        (ansi-term "zsh")))))
-
-(defun gemo/new-terminal ()
-  "Create a new terminal."
-  (interactive)
-  (split-window-sensibly (selected-window) nil t)
-  (other-window 1)
-  (ansi-term "zsh"))
-
 ;; LSP helper functions
 (defun gemo/lsp-should-manage-p ()
   "Check if current buffer should be managed by LSP."
@@ -237,9 +217,7 @@
     "br" '(revert-buffer :which-key "Revert buffer")
 
     ;; Open
-    "o"  '(:ignore t :which-key "open")
-    "ot" '(gemo/toggle-term :which-key "Toggle terminal")
-    "oT" '(gemo/new-terminal :which-key "New terminal")))
+    "o"  '(:ignore t :which-key "open")))
 
 (use-package which-key
   :ensure t
@@ -470,8 +448,7 @@
           (?g "Find regexp" project-find-regexp)
           (?d "Dired" project-dired)
           (?v "VC dir" project-vc-dir)
-          (?s "Shell" project-shell)
-          (?e "Eshell" project-eshell))))
+          (?s "Shell" project-shell))))
 
 ;; ============================================
 ;; Angular Development Environment
@@ -569,11 +546,7 @@
   :general
   (:states 'normal
            :keymaps 'prog-mode-map
-           "K" #'eldoc-box-help-at-point)
-  :config
-  ;; Disable in terminal mode
-  (unless (display-graphic-p)
-    (setq eldoc-box-hover-mode nil)))
+           "K" #'eldoc-box-help-at-point))
 
 (use-package zig-mode
   :ensure t
