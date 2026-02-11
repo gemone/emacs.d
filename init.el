@@ -18,13 +18,16 @@
 
 ;;; 00 - Performance Optimization
 (defvar default-file-name-handler-alist file-name-handler-alist)
-(setq gc-cons-threshold most-positive-fixnum
-      gc-cons-percentage 0.6 file-name-handler-alist nil
+;; Increase GC threshold during startup for faster loading
+(setq gc-cons-threshold (* 256 1024 1024)  ; 256MB during startup
+      gc-cons-percentage 0.6
+      file-name-handler-alist nil
       site-run-file nil)
 
 (add-hook 'emacs-startup-hook
           (lambda ()
-            (setq gc-cons-threshold (* 2 1000 1000)
+            ;; Lower GC threshold after startup for normal use
+            (setq gc-cons-threshold (* 16 1024 1024)  ; 16MB during normal use
                   gc-cons-percentage 0.1
                   file-name-handler-alist default-file-name-handler-alist)
 
@@ -60,10 +63,13 @@
 ;; LSP helper functions
 (defun gemo/lsp-should-manage-p ()
   "Check if current buffer should be managed by LSP."
-  (and (buffer-file-name)
-       (not (string-prefix-p " " (buffer-name)))
-       (not (string-match-p "markdown-code-fontification" (buffer-name)))
-       (not (string-match-p "\\` \\*" (buffer-name)))))
+  (let ((buf-name (buffer-name)))
+    (and (buffer-file-name)
+         buf-name
+         (stringp buf-name)
+         (not (string-prefix-p " " buf-name))
+         (not (string-match-p "markdown-code-fontification" buf-name))
+         (not (string-match-p "\\` \\*" buf-name)))))
 
 (defun gemo/lsp-ensure-maybe ()
   "Conditionally start LSP based on buffer properties."
@@ -167,6 +173,8 @@
 (use-package evil
   :ensure t
   :demand t
+  :init
+  (setq evil-undo-system 'undo-fu)  ; Must set before evil loads
   :preface
   (setq evil-want-integration t
         evil-want-keybinding nil)
@@ -179,6 +187,38 @@
   :ensure t
   :demand t
   :config (evil-collection-init))
+
+;; undo-fu for better undo/redo with evil
+(use-package undo-fu
+  :ensure t)
+
+;; vundo for visual undo tree (modern alternative to undo-tree)
+(use-package vundo
+  :ensure t
+  :after general
+  :config
+  (setq vundo-glyph-alist vundo-unicode-symbols)
+  (setq vundo-window-max-height 8)
+  :bind
+  (("C-x u" . vundo)))
+
+;; undo-fu-session for persistent undo history
+(use-package undo-fu-session
+  :ensure t
+  :demand t
+  :after undo-fu
+  :config
+  (undo-fu-session-global-mode 1)
+  (setq undo-fu-session-directory
+        (expand-file-name ".undo-fu-session" user-emacs-directory))
+  (setq undo-fu-session-compression 'gzip))
+
+;; Evil Nerd Commenter for gcc-style commenting
+(use-package evil-nerd-commenter
+  :ensure t
+  :after evil
+  :config
+  (evilnc-default-hotkeys))
 
 (use-package general
   :ensure t
@@ -345,7 +385,6 @@
 ;; Projectile for project management
 (use-package projectile
   :ensure t
-  :demand t
   :custom
   (projectile-completion-system 'default)  ; Use vertico via completion-at-point
   (projectile-sort-order 'recentf)  ; Sort by recently active
