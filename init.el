@@ -121,14 +121,8 @@
     "bk" '(kill-current-buffer :which-key "Kill buffer")
     "bn" '(next-buffer :which-key "Next buffer")
     "bp" '(previous-buffer :which-key "Prev buffer")
-    "br" '(revert-buffer :which-key "Revert buffer")
+    "br" '(revert-buffer :which-key "Revert buffer")))
 
-    ;; Open
-    "o"  '(:ignore t :which-key "open")
-    "of" '(find-file :which-key "Find file")
-    "os" '(lambda () (interactive) (find-file "/ssh::") :which-key "SSH remote file")
-    "od" '(lambda () (interactive) (find-file "/ssh::") :which-key "SSH remote dired")
-    "ou" '(lambda () (interactive) (find-file "/sudo::") :which-key "Sudo file")))
 
 (use-package which-key
   :ensure t
