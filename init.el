@@ -1,7 +1,6 @@
 ;; init.el --- Main Emacs configuration -*- lexical-binding: t; -*-
 
 ;;; 00.1 - Load Options
-;; Load default variable definitions
 (let ((options (expand-file-name "options.el" user-emacs-directory)))
   (when (file-exists-p options)
     (load options)))
@@ -84,6 +83,54 @@
   (if current-prefix-arg
       (zoxide-open-with nil (lambda (file) (dired-other-window file)) t)
     (zoxide-open-with nil (lambda (file) (dired file)) t)))
+
+(use-package general
+  :ensure t
+  :demand t
+  :config
+  (general-auto-unbind-keys)
+  (general-override-mode)
+  (general-create-definer gemo/leader-keys
+    :states '(normal insert visual emacs)
+    :keymaps 'override
+    :prefix "SPC"
+    :global-prefix "C-SPC")
+
+  (general-define-key
+   :states 'normal
+   :keymaps 'override
+   "\\" '(nil :which-key "config"))
+
+  (general-define-key
+   :states 'normal
+   :prefix "\\"
+   :non-normal-prefix "C-\\"
+   "cc" '(lambda () (interactive) (find-file (expand-file-name "init.el" user-emacs-directory)) :which-key "config init.el")
+   "cd" '(lambda () (interactive) (dired user-emacs-directory) :which-key "config directory"))
+
+  (gemo/leader-keys
+    "SPC" '(execute-extended-command :which-key "M-x")
+    "!"   '(shell-command :which-key "Shell command")
+
+    ;; Buffer Management
+    "b"  '(:ignore t :which-key "buffer")
+    "bb" '(switch-to-buffer :which-key "Switch buffer")
+    "bk" '(kill-current-buffer :which-key "Kill buffer")
+    "bn" '(next-buffer :which-key "Next buffer")
+    "bp" '(previous-buffer :which-key "Prev buffer")
+    "br" '(revert-buffer :which-key "Revert buffer")
+
+    ;; Open
+    "o"  '(:ignore t :which-key "open")))
+
+(use-package which-key
+  :ensure t
+  :demand t
+  :custom
+  (which-key-idle-delay 0.5)
+  (which-key-secondary-delay 0.1)
+  :config (which-key-mode))
+
 
 ;;; 03 - UI Settings
 (use-package emacs
@@ -195,7 +242,6 @@
 ;; vundo for visual undo tree (modern alternative to undo-tree)
 (use-package vundo
   :ensure t
-  :after general
   :config
   (setq vundo-glyph-alist vundo-unicode-symbols)
   (setq vundo-window-max-height 8)
@@ -220,52 +266,20 @@
   :config
   (evilnc-default-hotkeys))
 
-(use-package general
+;; Vimish-fold for Vim-like folding
+(use-package vimish-fold
   :ensure t
-  :demand t
+  :hook ((prog-mode . vimish-fold-mode)
+         (prog-mode . hs-minor-mode))
   :config
-  (general-auto-unbind-keys)
-  (general-override-mode)
-  (general-create-definer gemo/leader-keys
-    :states '(normal insert visual emacs)
-    :keymaps 'override
-    :prefix "SPC"
-    :global-prefix "C-SPC")
+  (setq vimish-fold-indication-mode 'right-fringe))
 
-  (general-define-key
-   :states 'normal
-   :keymaps 'override
-   "\\" '(nil :which-key "config"))
-
-  (general-define-key
-   :states 'normal
-   :prefix "\\"
-   :non-normal-prefix "C-\\"
-   "cc" '(lambda () (interactive) (find-file (expand-file-name "init.el" user-emacs-directory)) :which-key "config init.el")
-   "cd" '(lambda () (interactive) (dired user-emacs-directory) :which-key "config directory"))
-
-  (gemo/leader-keys
-    "SPC" '(execute-extended-command :which-key "M-x")
-    "!"   '(shell-command :which-key "Shell command")
-
-    ;; Buffer Management
-    "b"  '(:ignore t :which-key "buffer")
-    "bb" '(switch-to-buffer :which-key "Switch buffer")
-    "bk" '(kill-current-buffer :which-key "Kill buffer")
-    "bn" '(next-buffer :which-key "Next buffer")
-    "bp" '(previous-buffer :which-key "Prev buffer")
-    "br" '(revert-buffer :which-key "Revert buffer")
-
-    ;; Open
-    "o"  '(:ignore t :which-key "open")))
-
-(use-package which-key
+;; evil-vimish-fold integration
+(use-package evil-vimish-fold
   :ensure t
-  :demand t
-  :custom
-  (which-key-idle-delay 0.5)
-  (which-key-secondary-delay 0.1)
-  :config (which-key-mode))
+  :after (evil vimish-fold)
+  :config
+  (global-evil-vimish-fold-mode 1))
 
 ;;; 06 - Completion Framework
 (use-package vertico
@@ -519,27 +533,26 @@
 (use-package lsp-mode
   :ensure t
   :demand t
-  :after general
   :init
   (setq lsp-keymap-prefix "C-c l"
         lsp-auto-configure t
         lsp-completion-provider :capf
         lsp-prefer-capf t
-        lsp-idle-delay 0.3
+        lsp-idle-delay 1.0
         lsp-enable-on-type-formatting nil
         lsp-enable-folding nil
-        lsp-enable-symbol-highlighting t
-        lsp-enable-imenu t
+        lsp-enable-symbol-highlighting nil
+        lsp-enable-imenu nil
         lsp-enable-snippet nil
         lsp-keep-workspace-alives nil
         lsp-restart 'auto-restart
-        lsp-signature-auto-activate t
-        lsp-signature-render-documentation t
+        lsp-signature-auto-activate nil
+        lsp-signature-render-documentation nil
         lsp-workspace-folder-watchers nil
         lsp-enable-file-watchers nil
-        lsp-enable-text-colors t
-        lsp-semantic-tokens-enable t
-        lsp-semantic-tokens-apply-modifiers t
+        lsp-enable-text-colors nil
+        lsp-semantic-tokens-enable nil
+        lsp-semantic-tokens-apply-modifiers nil
         lsp-enable-indentation nil
         lsp-log-io nil
         lsp-print-performance nil
@@ -549,14 +562,14 @@
         lsp-headerline-breadcrumb-enable nil
         lsp-format-on-save nil
         lsp-before-save-edits nil
-        ;; Inlay hint settings
-        lsp-inlay-hint-enable t)
+        lsp-inlay-hint-enable nil
+        lsp-max-workspace-history-size 0
+        lsp-use-plists t)
 
   :hook
   (prog-mode . gemo/lsp-ensure-maybe)
   (lsp-mode . lsp-enable-which-key-integration)
-  (lsp-mode . eldoc-box-hover-mode)  ; Enable eldoc-box for LSP
-  (lsp-mode . lsp-inlay-hint-mode)   ; Enable inlay hints for type annotations
+  (lsp-mode . eldoc-box-hover-mode)
 
   :general
   (:states 'normal
@@ -567,7 +580,7 @@
            "gR" #'lsp-rename)
 
   :config
-  ;; Language-specific settings
+  (setq read-process-output-max (* 1024 1024))
   (lsp-register-custom-settings
    '(("typescript.format.enable" false)
      ("javascript.format.enable" false)))
@@ -589,9 +602,156 @@
            :keymaps 'prog-mode-map
            "K" #'eldoc-box-help-at-point))
 
+;; For C/C++
+(use-package ccls
+  :ensure t
+  :after lsp-mode
+  :hook
+  ((c-mode . (lambda ()
+              (require 'ccls)
+              (lsp-deferred)))
+   (c++-mode . (lambda ()
+                 (require 'ccls)
+                 (lsp-deferred)))
+   (objc-mode . (lambda ()
+                  (require 'ccls)
+                  (lsp-deferred)))
+   (cuda-mode . (lambda ()
+                  (require 'ccls)
+                  (lsp-deferred))))
+  :init
+  (setq ccls-executable (or (executable-find "ccls")
+                          "ccls")
+        ccls-args nil
+        ccls-library-folders-fn nil
+        ccls-root-files '(".ccls-root" "compile_commands.json" ".git")
+        ccls-initialization-options (list :cache (list :directory (expand-file-name ".ccls-cache" user-emacs-directory))))
+  :config
+  (with-eval-after-load 'lsp-mode
+    (lsp-register-custom-settings
+     '(("ccls.completion.enableSnippetInsertion" t)
+       ("ccls.completion.detailedLabel" t)
+       ("ccls.highlight.largeFileSize" 2097152)
+       ("ccls.index.whitelist" ["./src/" "./include/" "./"])
+       ("ccls.index.onChange" t)
+       ("ccls.misc.disableDiagnostics" nil)
+       ("ccls.call.range.depth" 1)
+       ("ccls.clang.extraArgs" ["-std=c++17" "-Wall"])
+       ("ccls.semanticHighlighting.enable" t)))))
+
+;; For python
+(use-package lsp-pyright
+  :ensure t
+  :after lsp-mode
+  :hook
+  (python-mode . (lambda ()
+                  (require 'lsp-pyright)
+                  (lsp-deferred)))
+  :init
+  (setq lsp-pyright-python-language-server-command "pyright-langserver"
+        lsp-pyright-multi-root t
+        lsp-pyright-use-library-code-actions t
+        lsp-pyright-disable-organize-imports nil
+        lsp-pyright-typechecking-mode "basic"
+        lsp-pyright-disable-language-server nil)
+  :config
+  (with-eval-after-load 'lsp-mode
+    (lsp-register-custom-settings
+     '(("python.analysis.typeCheckingMode" "basic")
+       ("python.analysis.autoImportCompletions" t)
+       ("python.analysis.diagnosticMode" "workspace")
+       ("python.formatting.provider" "black")))))
+
+;; Java (Eclipse JDT)
+(use-package lsp-java
+  :ensure t
+  :after lsp-mode
+  :hook
+  (java-mode . (lambda ()
+                 (require 'lsp-java)
+                 (lsp-deferred)))
+  :init
+  (setq lsp-java-java-path "java"
+        lsp-java-workspace-dir (expand-file-name ".workspace/java" user-emacs-directory)
+        lsp-java-server-dir (expand-file-name ".workspace/jdt-language-server" user-emacs-directory)
+        lsp-java-completion-enabled t
+        lsp-java-completion-overwrite t
+        lsp-java-completion-guess-args t
+        lsp-java-completion-static-members t
+        lsp-java-completion-favorite-static-members '("org.junit.Assert.*" "org.junit.Assume.*" "org.junit.jupiter.api.Assertions.*" "org.junit.jupiter.api.Assumptions.*" "org.junit.jupiter.api.DynamicContainer.*" "org.junit.jupiter.api.DynamicTest.*" "org.mockito.Mockito.*" "org.mockito.ArgumentMatchers.*" "org.mockito.Answers.*")
+        lsp-java-signature-help-enabled t
+        lsp-java-signature-help-description-enabled t
+        lsp-java-format-enabled t
+        lsp-java-format-comments-enabled t
+        lsp-java-format-on-type-enabled t
+        lsp-java-organize-imports-on-save t
+        lsp-java-symbol-sources-enabled t
+        lsp-java-references-code-lens-enabled t
+        lsp-java-references-include-declarations t
+        lsp-java-implementations-code-lens-enabled t
+        lsp-java-progress-reports-enabled t)
+  :config
+  (with-eval-after-load 'lsp-mode
+    (lsp-register-custom-settings
+     '(("java.format.enabled" t)
+       ("java.format.comments.enabled" t)
+       ("java.format.onType.enabled" t)
+       ("java.saveActions.organizeImports" t)
+       ("java.completion.enabled" t)
+       ("java.completion.overwrite" t)
+       ("java.completion.guessMethodArguments" t)
+       ("java.completion.staticMemberPrefixes" ["org.junit.Assert." "org.junit.Assume." "org.junit.jupiter.api.Assertions." "org.junit.jupiter.api.Assumptions." "org.mockito.Mockito." "org.mockito.ArgumentMatchers." "org.mockito.Answers."])))))
+
+;; Angular Language Server
+(use-package lsp-angula
+  :ensure nil
+  :after lsp-mode
+  :hook
+  ((typescript-mode . gemo/lsp-angular-enable-maybe)
+   (html-mode . gemo/lsp-angular-enable-maybe))
+  :config
+  (defun gemo/lsp-angular-enable-maybe ()
+    "Enable Angular language server if in an Angular project."
+    (when (and (lsp-workspace-root)
+               (file-exists-p (expand-file-name "angular.json" (lsp-workspace-root))))
+      (lsp-deferred)))
+  (lsp-register-custom-settings
+   '(("angular.enable-strict-mode" nil)
+     ("angular.include-automatic-options" t)
+     ("angular.inlay-hints" t))))
+
+;; Vue Language Server (Volar, built-in with lsp-mode)
+;; Install: npm install -g @vue/language-server
+(use-package lsp-vue
+  :ensure nil
+  :after lsp-mode
+  :hook
+  (vue-mode . (lambda ()
+                (lsp-deferred)))
+  :init
+  (setq lsp-volar-typescript-server-id 'ts-ls
+        lsp-volar-support-vue2 nil
+        lsp-volar-location-for-typescript-plugin :auto)
+  :config
+  (lsp-register-custom-settings
+   '(("typescript.suggest.autoImports" t)
+     ("typescript.suggest.completeFunctionCalls" t)
+     ("vue.inlayHints.missingProps" t)
+     ("vue.inlayHints.inlineHandlerLeading" t))))
+
+;; Vue Mode
+(use-package vue-mode
+  :ensure t
+  :mode (("\\.vue\\'" . vue-mode))
+  :init
+  (setq vue-mode-packages '(vue-ts-mode vue-html-mode vue-mode-base))
+  :config
+  (setq vue-indent-level 2
+        vue-html-tab-width 2))
+
+;; Zig
 (use-package zig-mode
   :ensure t
-  :after general
   :mode (("\\.zig\\'" . zig-mode)
          ("\\.zon\\'" . zig-mode))
   :custom
@@ -623,7 +783,6 @@
 ;;; 08 - File and Tools
 (use-package dired
   :ensure nil
-  :after general
   :config
   (setq-default dired-dwim-target t)
   (when (eq system-type 'darwin)
@@ -650,7 +809,6 @@
   :config (diredfl-global-mode))
 (use-package zoxide
   :ensure t
-  :after general
   :hook (dired-mode . (lambda ()
                         (local-set-key (kbd "P") 'gemo/zoxide-open-with-dired)))
   :general
@@ -660,7 +818,6 @@
 
 (use-package consult
   :ensure t
-  :after general
   :general
   (gemo/leader-keys
     "s"  '(:ignore t :which-key "search")
@@ -708,7 +865,6 @@
 
 (use-package eshell
   :ensure nil
-  :after general
   :custom
   (eshell-scroll-to-bottom-on-input t)
   (tab-always-indent 'complete)
@@ -752,7 +908,6 @@
 ;; Popper for window management
 (use-package popper
   :ensure t
-  :after general
   :custom
   (popper-reference-buffers
    '("\\*eshell.*"
