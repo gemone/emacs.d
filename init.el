@@ -10,6 +10,9 @@
   (when (file-exists-p options-local)
     (load options-local)))
 
+;; Configure custom file for Customize interface settings
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+
 ;; Load early-init.local.el if it exists (for additional early init)
 (let ((early-init-local (expand-file-name "early-init.local.el" user-emacs-directory)))
   (when (file-exists-p early-init-local)
@@ -121,7 +124,11 @@
     "br" '(revert-buffer :which-key "Revert buffer")
 
     ;; Open
-    "o"  '(:ignore t :which-key "open")))
+    "o"  '(:ignore t :which-key "open")
+    "of" '(find-file :which-key "Find file")
+    "os" '(lambda () (interactive) (find-file "/ssh::") :which-key "SSH remote file")
+    "od" '(lambda () (interactive) (find-file "/ssh::") :which-key "SSH remote dired")
+    "ou" '(lambda () (interactive) (find-file "/sudo::") :which-key "Sudo file")))
 
 (use-package which-key
   :ensure t
@@ -1024,16 +1031,8 @@
   (when (file-exists-p init-local)
     (load init-local)))
 
+;; Load custom settings
+(when (file-exists-p custom-file)
+  (load custom-file))
+
 ;;; init.el ends here
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages nil))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )

@@ -27,3 +27,4 @@ projects
 lsp-mode-version-cache
 
 .slime*
+custom.el
