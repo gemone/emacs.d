@@ -58,71 +58,53 @@
 
 ;; Configure use-package
 (require 'use-package)
+(require 'use-package-ensure)
+(require 'use-package-core)  ; Required for general to register :general keyword
 (setq use-package-always-ensure t)  ; Auto-install packages
 (setq use-package-always-defer t)   ; Defer loading by default
 
-;;; 02 - Helper Functions
-;; LSP helper functions
-(defun gemo/lsp-should-manage-p ()
-  "Check if current buffer should be managed by LSP."
-  (let ((buf-name (buffer-name)))
-    (and (buffer-file-name)
-         buf-name
-         (stringp buf-name)
-         (not (string-prefix-p " " buf-name))
-         (not (string-match-p "markdown-code-fontification" buf-name))
-         (not (string-match-p "\\` \\*" buf-name)))))
+;; Ensure general is installed and loaded BEFORE other use-package forms
+;; This registers the :general keyword with use-package
+(unless (package-installed-p 'general)
+  (package-refresh-contents)
+  (package-install 'general))
+(require 'general)
 
-(defun gemo/lsp-ensure-maybe ()
-  "Conditionally start LSP based on buffer properties."
-  (unless (or (derived-mode-p 'emacs-lisp-mode 'lisp-mode 'makefile-mode 'snippet-mode 'ron-mode)
-              (not (gemo/lsp-should-manage-p)))
-    (lsp-deferred)))
+;; Verify general registered with use-package
+(message "General loaded, use-package keywords registered")
+(general-auto-unbind-keys)
+(general-override-mode)
 
-;; Zoxide helper
-(defun gemo/zoxide-open-with-dired ()
-  "Open zoxide directory in dired."
-  (interactive)
-  (if current-prefix-arg
-      (zoxide-open-with nil (lambda (file) (dired-other-window file)) t)
-    (zoxide-open-with nil (lambda (file) (dired file)) t)))
+;; General keybindings leader definer
+(general-create-definer gemo/leader-keys
+  :states '(normal insert visual emacs)
+  :keymaps 'override
+  :prefix "SPC"
+  :global-prefix "C-SPC")
 
-(use-package general
-  :ensure t
-  :demand t
-  :config
-  (general-auto-unbind-keys)
-  (general-override-mode)
-  (general-create-definer gemo/leader-keys
-    :states '(normal insert visual emacs)
-    :keymaps 'override
-    :prefix "SPC"
-    :global-prefix "C-SPC")
+(general-define-key
+ :states 'normal
+ :keymaps 'override
+ "\\" '(nil :which-key "config"))
 
-  (general-define-key
-   :states 'normal
-   :keymaps 'override
-   "\\" '(nil :which-key "config"))
+(general-define-key
+ :states 'normal
+ :prefix "\\"
+ :non-normal-prefix "C-\\"
+ "cc" '(lambda () (interactive) (find-file (expand-file-name "init.el" user-emacs-directory)) :which-key "config init.el")
+ "cd" '(lambda () (interactive) (dired user-emacs-directory) :which-key "config directory"))
 
-  (general-define-key
-   :states 'normal
-   :prefix "\\"
-   :non-normal-prefix "C-\\"
-   "cc" '(lambda () (interactive) (find-file (expand-file-name "init.el" user-emacs-directory)) :which-key "config init.el")
-   "cd" '(lambda () (interactive) (dired user-emacs-directory) :which-key "config directory"))
+(gemo/leader-keys
+  "SPC" '(execute-extended-command :which-key "M-x")
+  "!"   '(shell-command :which-key "Shell command")
 
-  (gemo/leader-keys
-    "SPC" '(execute-extended-command :which-key "M-x")
-    "!"   '(shell-command :which-key "Shell command")
-
-    ;; Buffer Management
-    "b"  '(:ignore t :which-key "buffer")
-    "bb" '(switch-to-buffer :which-key "Switch buffer")
-    "bk" '(kill-current-buffer :which-key "Kill buffer")
-    "bn" '(next-buffer :which-key "Next buffer")
-    "bp" '(previous-buffer :which-key "Prev buffer")
-    "br" '(revert-buffer :which-key "Revert buffer")))
-
+  ;; Buffer Management
+  "b"  '(:ignore t :which-key "buffer")
+  "bb" '(switch-to-buffer :which-key "Switch buffer")
+  "bk" '(kill-current-buffer :which-key "Kill buffer")
+  "bn" '(next-buffer :which-key "Next buffer")
+  "bp" '(previous-buffer :which-key "Prev buffer")
+  "br" '(revert-buffer :which-key "Revert buffer"))
 
 (use-package which-key
   :ensure t
@@ -132,12 +114,20 @@
   (which-key-secondary-delay 0.1)
   :config (which-key-mode))
 
+;;; 02 - Helper Functions
+
+;; Zoxide helper
+(defun gemo/zoxide-open-with-dired ()
+  "Open zoxide directory in dired."
+  (interactive)
+  (if current-prefix-arg
+      (zoxide-open-with nil (lambda (file) (dired-other-window file)) t)
+    (zoxide-open-with nil (lambda (file) (dired file)) t)))
 
 ;;; 03 - UI Settings
 (use-package emacs
   :ensure nil
-  :init
-  (add-hook 'window-setup-hook #'toggle-frame-maximized)
+  :hook (window-setup . toggle-frame-maximized)
   :config
   (global-display-line-numbers-mode t)
 
@@ -282,7 +272,7 @@
   :config
   (global-evil-vimish-fold-mode 1))
 
-;;; 06 - Completion Framework
+;;; 06 - Completion Framework (vertico for minibuffer)
 (use-package vertico
   :ensure t
   :init (vertico-mode)
@@ -311,35 +301,135 @@
   (completion-pcm-leading-wildcard t)
   (orderless-matching-styles '(orderless-literal orderless-regexp orderless-flex)))
 
-(use-package corfu
-  :ensure t
-  :init (global-corfu-mode)
-  :custom
-  (corfu-cycle t)
-  (corfu-auto t)
-  (corfu-preview-current nil)
-  (corfu-separator ?\s)
-  (corfu-quit-at-boundary 'separator)
-  (corfu-quit-no-match 'separator)
-  (corfu-auto-prefix 2)
-  (corfu-auto-delay 0.1)
-  :config (corfu-popupinfo-mode))
-
-(use-package kind-icon
-  :ensure t
-  :after corfu
-  :custom
-  (kind-icon-default-face 'corfu-default)
-  :config
-  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
-
-(use-package cape
-  :ensure t
-  :config
-  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
-  (add-to-list 'completion-at-point-functions #'cape-file))
+;; Note: corfu is disabled because lsp-bridge uses acm (Asynchronous Completion Menu)
+;; If you need corfu for non-lsp modes, you can enable it conditionally
 
 ;;; 07 - Development Tools
+
+;; ============================================
+;; LSP-Bridge Configuration
+;; ============================================
+
+;; Add lsp-bridge to load-path (git submodule)
+(add-to-list 'load-path (expand-file-name "lsp-bridge" user-emacs-directory))
+
+;; Yasnippet (required by lsp-bridge)
+(use-package yasnippet
+  :ensure t
+  :demand t
+  :config
+  (yas-global-mode 1))
+
+;; LSP-Bridge - Fast LSP client using multi-threading
+(use-package lsp-bridge
+  :ensure nil
+  :demand t
+  :hook (doom-load-theme . (lambda () (acm-frame-init-colors t)))
+  :init
+  ;; Use .venv Python for lsp-bridge
+  (setq lsp-bridge-python-command (expand-file-name ".venv/bin/python3" user-emacs-directory))
+
+  ;; Project root selection - like lsp-mode's behavior
+  (defvar gemo/lsp-bridge-project-roots-cache (make-hash-table :test 'equal))
+
+  (defun gemo/lsp-bridge-select-project-root (filepath)
+    "Select project root for FILEPATH with popup selection like lsp-mode.
+Returns the selected project root directory."
+    (let* ((file-dir (file-name-directory (directory-file-name (file-truename filepath))))
+           (cached-root (gethash file-dir gemo/lsp-bridge-project-roots-cache)))
+      (or cached-root
+          (let* ((project-roots (gemo/lsp-bridge-find-project-roots filepath))
+                 (selected-root
+                  (cond
+                   ;; Single root found - use it
+                   ((= (length project-roots) 1)
+                    (car project-roots))
+                   ;; Multiple roots - let user choose
+                   ((> (length project-roots) 1)
+                    (completing-read "Select project root: " project-roots nil t))
+                   ;; No roots found - use file directory
+                   (t file-dir))))
+            (puthash file-dir selected-root gemo/lsp-bridge-project-roots-cache)
+            selected-root))))
+
+  (defun gemo/lsp-bridge-find-project-roots (filepath)
+    "Find all potential project roots for FILEPATH by searching upward for project markers."
+    (let* ((file-dir (file-name-directory (directory-file-name (file-truename filepath))))
+           (project-markers '(".git" ".dir-locals.el"
+                              "package.json" "Cargo.toml" "pyproject.toml"
+                              "go.mod" "pom.xml" "build.gradle" "angular.json"
+                              "compile_commands.json" ".ccls-root"))
+           roots)
+      ;; Search upward for project markers
+      (let ((dir file-dir))
+        (while (and dir (not (string-equal dir "/")))
+          (dolist (marker project-markers)
+            (let ((marker-path (expand-file-name marker dir)))
+              (when (or (file-exists-p marker-path)
+                        (file-directory-p marker-path))
+                (cl-pushnew dir roots :test #'string-equal))))
+          (setq dir (file-name-directory (directory-file-name dir)))))
+      ;; Also add projectile/project.el roots if available
+      (when (fboundp 'projectile-project-p)
+        (let ((proj-root (projectile-project-p file-dir)))
+          (when proj-root
+            (cl-pushnew proj-root roots :test #'string-equal))))
+      (when (fboundp 'project-current)
+        (let ((proj (project-current nil file-dir)))
+          (when proj
+            (let ((proj-root (nth 2 proj)))
+              (when proj-root
+                (cl-pushnew proj-root roots :test #'string-equal))))))
+      ;; Return unique roots, preferring deeper ones
+      (delete-dups (sort roots #'> :key #'length))))
+
+  ;; Set custom project path function
+  (setq lsp-bridge-get-project-path-by-filepath #'gemo/lsp-bridge-select-project-root)
+
+  ;; Enable diagnostics
+  (setq lsp-bridge-enable-diagnostics t
+        lsp-bridge-enable-signature-help t
+        lsp-bridge-enable-search-words t
+        lsp-bridge-enable-auto-format-code nil
+        lsp-bridge-enable-inlay-hint nil
+        lsp-bridge-enable-hover-diagnostic nil
+        lsp-bridge-enable-completion-in-string nil
+        lsp-bridge-enable-document-highlight nil
+        lsp-bridge-completion-obey-trigger-characters-p t)
+
+  ;; Disable backup (lsp-bridge recommendation)
+  (setq lsp-bridge-disable-backup t)
+
+  ;; Signature help display
+  (setq lsp-bridge-signature-show-function 'lsp-bridge-signature-show-with-frame
+        lsp-bridge-signature-show-with-frame-position "bottom-right")
+
+  ;; ACM (Asynchronous Completion Menu) settings
+  (setq acm-enable-icon t
+        acm-enable-doc t
+        acm-enable-doc-markdown-render 'async
+        acm-menu-length 10
+        acm-doc-frame-max-lines 20)
+
+  ;; Language Server Configuration
+  (setq lsp-bridge-c-lsp-server "ccls"
+        lsp-bridge-python-lsp-server "pyright")
+
+  :general
+  (general-def
+    :states 'normal
+    :keymaps 'prog-mode-map
+    "gd" #'lsp-bridge-find-def
+    "gD" #'lsp-bridge-find-type-def
+    "gr" #'lsp-bridge-find-references
+    "gR" #'lsp-bridge-rename
+    "gI" #'lsp-bridge-find-impl
+    "K"  #'lsp-bridge-popup-documentation)
+
+  :config
+  ;; Start global lsp-bridge mode
+  (global-lsp-bridge-mode))
+
 (use-package editorconfig
   :ensure t
   :diminish
@@ -409,6 +499,7 @@
   (projectile-globally-ignored-files '(".DS_Store" "*.elc" "node_modules" "target" "zig-cache" "zig-out"))
   (projectile-globally-ignored-directories '(".git" "node_modules" "target" "zig-cache" "zig-out" "vendor" ".venv" "venv" "__pycache__"))
   (projectile-indexing-method 'alien)  ; Faster indexing using external tools
+  :hook (project-find-functions . project-try-projectile)
   :config
   (projectile-mode +1)
   ;; Integrate with project.el
@@ -422,8 +513,7 @@
       "Try to find Projectile project in DIR."
       (let ((root (projectile-project-p dir)))
         (when root
-          (cons 'transient root))))
-    (add-hook 'project-find-functions #'project-try-projectile)))
+          (cons 'transient root))))))
 
 ;; Project.el configuration
 (use-package project
@@ -531,226 +621,15 @@
         '(("angular" . "\\.component\\.html\\'"))))
 
 
-(use-package lsp-mode
-  :ensure t
-  :demand t
-  :init
-  (setq lsp-keymap-prefix "C-c l"
-        lsp-auto-configure t
-        lsp-completion-provider :capf
-        lsp-prefer-capf t
-        lsp-idle-delay 1.0
-        lsp-enable-on-type-formatting nil
-        lsp-enable-folding nil
-        lsp-enable-symbol-highlighting nil
-        lsp-enable-imenu nil
-        lsp-enable-snippet nil
-        lsp-keep-workspace-alives nil
-        lsp-restart 'auto-restart
-        lsp-signature-auto-activate nil
-        lsp-signature-render-documentation nil
-        lsp-workspace-folder-watchers nil
-        lsp-enable-file-watchers nil
-        lsp-enable-text-colors nil
-        lsp-semantic-tokens-enable nil
-        lsp-semantic-tokens-apply-modifiers nil
-        lsp-enable-indentation nil
-        lsp-log-io nil
-        lsp-print-performance nil
-        lsp-server-trace nil
-        lsp-diagnostics-provider :none
-        lsp-modeline-diagnostics-enable nil
-        lsp-headerline-breadcrumb-enable nil
-        lsp-format-on-save nil
-        lsp-before-save-edits nil
-        lsp-inlay-hint-enable nil
-        lsp-max-workspace-history-size 0
-        lsp-use-plists t)
 
-  :hook
-  (prog-mode . gemo/lsp-ensure-maybe)
-  (lsp-mode . lsp-enable-which-key-integration)
-  (lsp-mode . eldoc-box-hover-mode)
 
-  :general
-  (:states 'normal
-           :keymaps 'prog-mode-map
-           "gd" #'xref-find-definitions
-           "gr" #'xref-find-references
-           "gD" #'lsp-find-typeDefinition
-           "gR" #'lsp-rename)
-
-  :config
-  (setq read-process-output-max (* 1024 1024))
-  (lsp-register-custom-settings
-   '(("typescript.format.enable" false)
-     ("javascript.format.enable" false)))
-  )
-
-;; eldoc-box for better documentation display
-(use-package eldoc-box
-  :ensure t
-  :after lsp-mode general
-  :demand t
-  :custom
-  (eldoc-box-max-height 20)
-  (eldoc-box-max-width 80)
-  (eldoc-box-delay 0.3)
-  (eldoc-box-only-show-symbol-once t)
-  (eldoc-box-clear-with-C-g t)
-  :general
-  (:states 'normal
-           :keymaps 'prog-mode-map
-           "K" #'eldoc-box-help-at-point))
-
-;; For C/C++
-(use-package ccls
-  :ensure t
-  :after lsp-mode
-  :hook
-  ((c-mode . (lambda ()
-              (require 'ccls)
-              (lsp-deferred)))
-   (c++-mode . (lambda ()
-                 (require 'ccls)
-                 (lsp-deferred)))
-   (objc-mode . (lambda ()
-                  (require 'ccls)
-                  (lsp-deferred)))
-   (cuda-mode . (lambda ()
-                  (require 'ccls)
-                  (lsp-deferred))))
-  :init
-  (setq ccls-executable (or (executable-find "ccls")
-                          "ccls")
-        ccls-args nil
-        ccls-library-folders-fn nil
-        ccls-root-files '(".ccls-root" "compile_commands.json" ".git")
-        ccls-initialization-options (list :cache (list :directory (expand-file-name ".ccls-cache" user-emacs-directory))))
-  :config
-  (with-eval-after-load 'lsp-mode
-    (lsp-register-custom-settings
-     '(("ccls.completion.enableSnippetInsertion" t)
-       ("ccls.completion.detailedLabel" t)
-       ("ccls.highlight.largeFileSize" 2097152)
-       ("ccls.index.whitelist" ["./src/" "./include/" "./"])
-       ("ccls.index.onChange" t)
-       ("ccls.misc.disableDiagnostics" nil)
-       ("ccls.call.range.depth" 1)
-       ("ccls.clang.extraArgs" ["-std=c++17" "-Wall"])
-       ("ccls.semanticHighlighting.enable" t)))))
-
-;; For python
-(use-package lsp-pyright
-  :ensure t
-  :after lsp-mode
-  :hook
-  (python-mode . (lambda ()
-                  (require 'lsp-pyright)
-                  (lsp-deferred)))
-  :init
-  (setq lsp-pyright-python-language-server-command "pyright-langserver"
-        lsp-pyright-multi-root t
-        lsp-pyright-use-library-code-actions t
-        lsp-pyright-disable-organize-imports nil
-        lsp-pyright-typechecking-mode "basic"
-        lsp-pyright-disable-language-server nil)
-  :config
-  (with-eval-after-load 'lsp-mode
-    (lsp-register-custom-settings
-     '(("python.analysis.typeCheckingMode" "basic")
-       ("python.analysis.autoImportCompletions" t)
-       ("python.analysis.diagnosticMode" "workspace")
-       ("python.formatting.provider" "black")))))
-
-;; Java (Eclipse JDT)
-(use-package lsp-java
-  :ensure t
-  :after lsp-mode
-  :hook
-  (java-mode . (lambda ()
-                 (require 'lsp-java)
-                 (lsp-deferred)))
-  :init
-  (setq lsp-java-java-path "java"
-        lsp-java-workspace-dir (expand-file-name ".workspace/java" user-emacs-directory)
-        lsp-java-server-dir (expand-file-name ".workspace/jdt-language-server" user-emacs-directory)
-        lsp-java-completion-enabled t
-        lsp-java-completion-overwrite t
-        lsp-java-completion-guess-args t
-        lsp-java-completion-static-members t
-        lsp-java-completion-favorite-static-members '("org.junit.Assert.*" "org.junit.Assume.*" "org.junit.jupiter.api.Assertions.*" "org.junit.jupiter.api.Assumptions.*" "org.junit.jupiter.api.DynamicContainer.*" "org.junit.jupiter.api.DynamicTest.*" "org.mockito.Mockito.*" "org.mockito.ArgumentMatchers.*" "org.mockito.Answers.*")
-        lsp-java-signature-help-enabled t
-        lsp-java-signature-help-description-enabled t
-        lsp-java-format-enabled t
-        lsp-java-format-comments-enabled t
-        lsp-java-format-on-type-enabled t
-        lsp-java-organize-imports-on-save t
-        lsp-java-symbol-sources-enabled t
-        lsp-java-references-code-lens-enabled t
-        lsp-java-references-include-declarations t
-        lsp-java-implementations-code-lens-enabled t
-        lsp-java-progress-reports-enabled t)
-  :config
-  (with-eval-after-load 'lsp-mode
-    (lsp-register-custom-settings
-     '(("java.format.enabled" t)
-       ("java.format.comments.enabled" t)
-       ("java.format.onType.enabled" t)
-       ("java.saveActions.organizeImports" t)
-       ("java.completion.enabled" t)
-       ("java.completion.overwrite" t)
-       ("java.completion.guessMethodArguments" t)
-       ("java.completion.staticMemberPrefixes" ["org.junit.Assert." "org.junit.Assume." "org.junit.jupiter.api.Assertions." "org.junit.jupiter.api.Assumptions." "org.mockito.Mockito." "org.mockito.ArgumentMatchers." "org.mockito.Answers."])))))
-
-;; Angular Language Server
-(use-package lsp-angula
-  :ensure nil
-  :after lsp-mode
-  :hook
-  ((typescript-mode . gemo/lsp-angular-enable-maybe)
-   (html-mode . gemo/lsp-angular-enable-maybe))
-  :config
-  (defun gemo/lsp-angular-enable-maybe ()
-    "Enable Angular language server if in an Angular project."
-    (when (and (lsp-workspace-root)
-               (file-exists-p (expand-file-name "angular.json" (lsp-workspace-root))))
-      (lsp-deferred)))
-  (lsp-register-custom-settings
-   '(("angular.enable-strict-mode" nil)
-     ("angular.include-automatic-options" t)
-     ("angular.inlay-hints" t))))
-
-;; Vue Language Server (Volar, built-in with lsp-mode)
-;; Install: npm install -g @vue/language-server
-(use-package lsp-vue
-  :ensure nil
-  :after lsp-mode
-  :hook
-  (vue-mode . (lambda ()
-                (lsp-deferred)))
-  :init
-  (setq lsp-volar-typescript-server-id 'ts-ls
-        lsp-volar-support-vue2 nil
-        lsp-volar-location-for-typescript-plugin :auto)
-  :config
-  (lsp-register-custom-settings
-   '(("typescript.suggest.autoImports" t)
-     ("typescript.suggest.completeFunctionCalls" t)
-     ("vue.inlayHints.missingProps" t)
-     ("vue.inlayHints.inlineHandlerLeading" t))))
-
-;; Vue Mode
+;; Vue Mode (lsp-bridge handles LSP via volar)
 (use-package vue-mode
   :ensure t
   :mode (("\\.vue\\'" . vue-mode))
-  :init
-  (setq vue-mode-packages '(vue-ts-mode vue-html-mode vue-mode-base))
   :config
   (setq vue-indent-level 2
         vue-html-tab-width 2))
-
-;; Zig
 (use-package zig-mode
   :ensure t
   :mode (("\\.zig\\'" . zig-mode)
@@ -860,7 +739,13 @@
   (setq inferior-lisp-program "sbcl"
         slime-autodoc-interval 0.5
         slime-highlight-edges t)
-  (slime-setup '(slime-fancy slime-autodoc)))
+  (slime-setup '(slime-fancy slime-autodoc))
+
+  ;; Enable acm capf backend for slime completion
+  (with-eval-after-load 'acm-backend-capf
+    (setq acm-enable-capf t)
+    (add-to-list 'acm-backend-capf-mode-list 'slime-mode)
+    (add-to-list 'acm-backend-capf-mode-list 'slime-repl-mode)))
 
 ;;; 09 - Eshell Configuration
 
