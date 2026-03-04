@@ -460,6 +460,25 @@ Returns the selected project root directory."
 		  ("not"    . ?¬)))
   (setq prettify-symbols-unprettify-at-point 'right-edge))
 
+;; Common Lisp Development (SLIME)
+(use-package slime
+  :ensure t
+  :hook
+  (slime-description-mode . (lambda ()
+                              (setq-local font-lock-defaults '(lisp-font-lock-keywords))
+                              (font-lock-mode 1)))
+  :config
+  (setq inferior-lisp-program "sbcl"
+        slime-autodoc-interval 0.5
+        slime-highlight-edges t)
+  (slime-setup '(slime-fancy slime-autodoc))
+
+  ;; Enable acm capf backend for slime completion
+  (with-eval-after-load 'acm-backend-capf
+    (setq acm-enable-capf t)
+    (add-to-list 'acm-backend-capf-mode-list 'slime-mode)
+    (add-to-list 'acm-backend-capf-mode-list 'slime-repl-mode)))
+
 ;; Tree-sitter automatic configuration
 (use-package treesit-auto
   :ensure t
@@ -620,9 +639,6 @@ Returns the selected project root directory."
   (setq web-mode-engines-alist
         '(("angular" . "\\.component\\.html\\'"))))
 
-
-
-
 ;; Vue Mode (lsp-bridge handles LSP via volar)
 (use-package vue-mode
   :ensure t
@@ -661,6 +677,7 @@ Returns the selected project root directory."
         ("C-c C-e" . markdown-do)))
 
 ;;; 08 - File and Tools
+
 (use-package dired
   :ensure nil
   :config
@@ -727,25 +744,24 @@ Returns the selected project root directory."
   (setq rg-group-result t
         rg-hide-command t))
 
-;; Common Lisp Development (SLIME)
-
-(use-package slime
+(use-package denote
   :ensure t
-  :hook
-  (slime-description-mode . (lambda ()
-                              (setq-local font-lock-defaults '(lisp-font-lock-keywords))
-                              (font-lock-mode 1)))
+  :hook (dired-mode . denote-dired-mode)
+  :bind
+  (("C-c n n" . denote)
+   ("C-c n r" . denote-rename-file)
+   ("C-c n l" . denote-link)
+   ("C-c n b" . denote-backlinks)
+   ("C-c n d" . denote-dired)
+   ("C-c n g" . denote-grep))
   :config
-  (setq inferior-lisp-program "sbcl"
-        slime-autodoc-interval 0.5
-        slime-highlight-edges t)
-  (slime-setup '(slime-fancy slime-autodoc))
+  (setq denote-directory (expand-file-name "~/Documents/notes/"))
 
-  ;; Enable acm capf backend for slime completion
-  (with-eval-after-load 'acm-backend-capf
-    (setq acm-enable-capf t)
-    (add-to-list 'acm-backend-capf-mode-list 'slime-mode)
-    (add-to-list 'acm-backend-capf-mode-list 'slime-repl-mode)))
+  ;; Automatically rename Denote buffers when opening them so that
+  ;; instead of their long file name they have, for example, a literal
+  ;; "[D]" followed by the file's title.  Read the doc string of
+  ;; `denote-rename-buffer-format' for how to modify this.
+  (denote-rename-buffer-mode 1))
 
 ;;; 09 - Eshell Configuration
 
