@@ -1,4 +1,3 @@
-.*
 !.gitmodules
 backups/
 elpaca/
@@ -13,6 +12,9 @@ history
 .cache/
 tramp
 *.elc
+eln-cache/
+*~
+
 
 # Local configuration (not tracked)
 early-init.local.el
