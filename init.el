@@ -365,3 +365,10 @@
 (use-package pi-coding-agent
   :ensure t)
 
+;; Ghostel: fast terminal emulator using libghostty-vt.
+;; Requires dynamic module support (module-file-suffix non-nil).
+;; Native binary auto-downloads on first use. Open via M-x ghostel.
+(use-package ghostel
+  :ensure t
+  :bind ("C-x m" . ghostel))
+
