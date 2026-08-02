@@ -51,6 +51,23 @@
   (ring-bell-function #'ignore)
   (initial-frame-alist '((fullscreen . maximized)))
   (inhibit-startup-screen t)
+  
+  ;; TAB cycle if there are only few candidates
+  (completion-cycle-threshold 3)
+
+  ;; Enable indentation+completion using the TAB key.
+  ;; `completion-at-point' is often bound to M-TAB.
+  (tab-always-indent 'complete)
+
+  ;; Emacs 30 and newer: Disable Ispell completion function.
+  ;; Try `cape-dict' as an alternative.
+  (text-mode-ispell-word-completion nil)
+
+  ;; Hide commands in M-x which do not apply to the current mode.  Corfu
+  ;; commands are hidden, since they are not used via M-x. This setting is
+  ;; useful beyond Corfu.
+  (read-extended-command-predicate #'command-completion-default-include-p)
+  
 
   :config
   (set-frame-parameter nil 'alpha-background 95)
@@ -59,7 +76,9 @@
   (tool-bar-mode -1)
   (scroll-bar-mode -1)
 
-  (context-menu-mode t))
+  (context-menu-mode t)
+
+  (show-paren-mode t))
 
 ;;; theme
 (use-package catppuccin-theme
@@ -81,6 +100,10 @@
   (meow-global-mode 1)
   :custom
   (meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
+  :bind
+  (:map meow-insert-state-keymap
+	("C-w" . meow-backward-kill-symbol)
+	("C-h" . meow-backward-delete))
   :config
  (meow-motion-define-key
    '("j" . meow-next)
@@ -122,7 +145,10 @@
    '("b" . meow-back-word)
    '("B" . meow-back-symbol)
    '("c" . meow-change)
-   '("d" . meow-delete)
+   '("d" . (lambda () (interactive)
+	     (if (use-region-p)
+		 (meow-kill)
+	       (meow-delete))))
    '("D" . meow-backward-delete)
    '("e" . meow-next-word)
    '("E" . meow-next-symbol)
@@ -165,7 +191,8 @@
    '("'" . repeat)
    '("<escape>" . ignore)))
   
-;; minibuff
+;;; Completion
+;; MiniBuff
 (use-package vertico
   :ensure t
   :custom
@@ -188,3 +215,42 @@
   (completion-category-overrides '((file (styles partial-completion))))
   (completion-category-defaults nil) ;; Disable defaults, use our settings
   (completion-pcm-leading-wildcard t))
+
+;; For Code
+(use-package corfu
+  :ensure t
+  :custom
+  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+  (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+  (corfu-preview-current nil)    ;; Disable current candidate preview
+  (corfu-preselect 'prompt)      ;; Preselect the prompt
+  (corfu-on-exact-match 'insert) ;; Configure handling of exact matches
+
+  ;; Enable Corfu only for certain modes. See also `global-corfu-modes'.
+  ;; :hook ((prog-mode . corfu-mode)
+  ;;        (shell-mode . corfu-mode)
+  ;;        (eshell-mode . corfu-mode))
+
+  :init
+
+  ;; Recommended: Enable Corfu globally.  Recommended since many modes provide
+  ;; Capfs and Dabbrev can be used globally (M-/).  See also the customization
+  ;; variable `global-corfu-modes' to exclude certain modes.
+  (global-corfu-mode)
+
+  ;; Enable optional extension modes:
+  (corfu-history-mode)
+  (corfu-mouse-mode)
+  (corfu-popupinfo-mode)
+  )
+
+
+;;; Coding
+
+;; ts
+(use-package treesit-auto
+  :ensure t
+  :config
+  (global-treesit-auto-mode))
+
