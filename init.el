@@ -80,6 +80,9 @@
 
   (show-paren-mode t))
 
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(load custom-file 'no-error 'no-message)
+
 ;;; theme
 (use-package catppuccin-theme
   :ensure t
@@ -104,8 +107,33 @@
   (:map meow-insert-state-keymap
 	("C-w" . meow-backward-kill-symbol)
 	("C-h" . meow-backward-delete))
+  (:map meow-normal-state-keymap
+	:prefix "g"
+	:prefix-map my/meow-g-prefix-map
+	("g" . beginning-of-buffer)
+	("a" . back-to-indentation)
+	("l" . end-of-line)
+	("e" . end-of-buffer))
+  (:map meow-normal-state-keymap
+        :prefix "C-w"
+        :prefix-map my/meow-window-map
+        ("h" . windmove-left)
+        ("j" . windmove-down)
+        ("k" . windmove-up)
+        ("l" . windmove-right)
+        ("o" . delete-other-windows)
+        ("v" . split-window-right)
+        ("s" . split-window-below)
+        ("w" . other-window)
+        ("q" . delete-window))
   :config
- (meow-motion-define-key
+  ;; C-w 被用作窗口前缀后，meow-kill 内部模拟的 C-w (kill-region) 会失效。
+  ;; 按 meow 文档，把 kill-region 挪到 C-M-w 并更新 meow--kbd-kill-region。
+  (meow-normal-define-key
+   '("C-M-w" . kill-region))
+  (setq meow--kbd-kill-region "C-M-w")
+
+  (meow-motion-define-key
    '("j" . meow-next)
    '("k" . meow-prev)
    '("<escape>" . ignore))
@@ -153,7 +181,6 @@
    '("e" . meow-next-word)
    '("E" . meow-next-symbol)
    '("f" . meow-find)
-   '("g" . meow-cancel-selection)
    '("G" . meow-grab)
    '("h" . meow-left)
    '("H" . meow-left-expand)
@@ -190,7 +217,7 @@
    '("/" . meow-visit)
    '("'" . repeat)
    '("<escape>" . ignore)))
-  
+
 ;;; Completion
 ;; MiniBuff
 (use-package vertico
@@ -242,11 +269,40 @@
   ;; Enable optional extension modes:
   (corfu-history-mode)
   (corfu-mouse-mode)
-  (corfu-popupinfo-mode)
-  )
+  (corfu-popupinfo-mode))
 
 
 ;;; Coding
+(use-package transient
+  :ensure t)
+;; git version
+(use-package magit
+  :ensure t
+  :commands (magit-status magit-file-dispatch)
+  :bind (("C-x g" . magit-status)
+         ("C-x M-g" . magit-file-dispatch))
+  :init
+  ;; 如果 custom.el 未设置 magit-git-executable，则自动检测
+  (unless (boundp 'magit-git-executable)
+    (setq magit-git-executable (or (executable-find "git") "git")))
+  :hook ((magit-status-mode . magit-auto-revert-mode)
+         (after-init . global-magit-file-mode))
+  :custom
+  (magit-status-sections-hook
+   '(
+     magit-insert-error-header
+     magit-insert-diff-filter-header
+     magit-insert-head-branch-header
+     magit-insert-upstream-branch-header
+     magit-insert-push-branch-header
+     magit-insert-untracked-files
+     magit-insert-unstaged-changes
+     magit-insert-staged-changes
+     ))
+  (vc-handled-backends '(Git))
+  :config
+  (remove-hook 'find-file-hook 'magit-auto-revert-mode))
+
 
 ;; ts
 (use-package treesit-auto
