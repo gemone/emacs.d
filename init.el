@@ -130,8 +130,9 @@
         ("w" . other-window)
         ("q" . delete-window))
   :config
-  ;; C-w 被用作窗口前缀后，meow-kill 内部模拟的 C-w (kill-region) 会失效。
-  ;; 按 meow 文档，把 kill-region 挪到 C-M-w 并更新 meow--kbd-kill-region。
+  ;; With C-w used as a window prefix, the C-w (kill-region) that meow-kill
+  ;; simulates internally would break. Per the meow docs, move kill-region
+  ;; to C-M-w and update meow--kbd-kill-region accordingly.
   (meow-normal-define-key
    '("C-M-w" . kill-region))
   (setq meow--kbd-kill-region "C-M-w")
@@ -285,7 +286,7 @@
   :bind (("C-x g" . magit-status)
          ("C-x M-g" . magit-file-dispatch))
   :init
-  ;; 如果 custom.el 未设置 magit-git-executable，则自动检测
+  ;; Auto-detect git if magit-git-executable is not set in custom.el
   (unless (boundp 'magit-git-executable)
     (setq magit-git-executable (or (executable-find "git") "git")))
   :hook ((magit-status-mode . magit-auto-revert-mode)
