@@ -33,3 +33,12 @@ git config --global gc.auto 256
 - `"http"` / `"https"`: 代理地址，格式 `host:port`（按你本地代理改）
 - `"no_proxy"`: 不走代理的地址（正则）
 - 留空 `("http" . "")` 表示该协议不走代理；整个变量设为 `nil` 关闭代理
+
+## agent-shell
+
+[agent-shell](https://github.com/xenodium/agent-shell) 通过 [ACP](https://agentclientprotocol.com) 在 Emacs 内交互 LLM agent。当前配置了 codex 和 pi。
+
+使用前需分别登录两个 agent CLI（各自存凭证）：
+
+- **codex**：需要 `codex` 完成登录，见 [codex 文档](https://code.claude.com/docs/en/overview)
+- **pi**：终端跑 `pi` 完成 provider/API key 配置，凭证存 `~/.pi/agent/`

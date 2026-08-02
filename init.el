@@ -353,10 +353,17 @@
   :config
   (remove-hook 'find-file-hook 'magit-auto-revert-mode))
 
-
 ;; ts
 (use-package treesit-auto
   :ensure t
   :config
   (global-treesit-auto-mode))
+
+;; agent-shell: LLM agent UI over ACP. codex + pi.
+;; Both adapters via npx (uniform): no global install, always latest.
+(use-package agent-shell
+  :ensure t
+  :custom
+  (agent-shell-openai-codex-acp-command '("npx" "-y" "@agentclientprotocol/codex-acp"))
+  (agent-shell-pi-acp-command '("npx" "-y" "pi-acp")))
 
