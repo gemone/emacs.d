@@ -63,7 +63,7 @@
   ;; `completion-at-point' is often bound to M-TAB.
   (tab-always-indent 'complete)
 
-  ;; Emacs 30 and newer: Disable Ispell completion function.
+    ;; Emacs 30 and newer: Disable Ispell completion function.
   ;; Try `cape-dict' as an alternative.
   (text-mode-ispell-word-completion nil)
 
@@ -71,7 +71,6 @@
   ;; commands are hidden, since they are not used via M-x. This setting is
   ;; useful beyond Corfu.
   (read-extended-command-predicate #'command-completion-default-include-p)
-  
 
   :config
   (set-frame-parameter nil 'alpha-background 95)
@@ -97,6 +96,52 @@
   (catppuccin-reload))
 
 ;;; font config
+(use-package fontaine
+  :ensure t
+  :demand t
+  :config
+  ;; Maple Mono ships as SEPARATE families: NF has Nerd Font icons (PUA),
+  ;; CN has CJK glyphs -- no NF-CN combo exists. Primary font = NF so
+  ;; mode-line/completion icons render natively; CJK is wired via fontset to
+  ;; the CN family below. Fallback list tried in order when not installed;
+  ;; its car MUST match the family set via the fontaine presets below.
+  (setq face-font-family-alternatives
+        '(("Maple Mono NF"
+           "CaskaydiaCove Nerd Font Mono"
+           "Cascadia Code"
+           "JetBrains Mono Nerd Font Mono"
+           "Iosevka Nerd Font Mono"
+           "DejaVu Sans Mono"
+           "Monospace")))
+  ;; CJK: Maple Mono CN first (shares latin metrics with NF, keeps columns
+  ;; aligned). font-spec + explicit "fontset-default" is reliable on pgtk;
+  ;; NAME=t with a bare family string often silently fails there.
+  ;; ponytail: 'han only; add 'kana/'cjk-misc if JP/KR glyphs are needed.
+  (dolist (f '("Maple Mono CN" "LXGW WenKai" "Sarasa Mono SC" "WenQuanYi Micro Hei Mono"))
+    (set-fontset-font "fontset-default" 'han (font-spec :family f) nil 'append))
+  (setq fontaine-presets
+        '((regular :default-height 130)
+          (large   :default-height 160)
+          (t       :default-family "Maple Mono NF"
+                   :default-weight regular
+                   :fixed-pitch-family "Maple Mono NF"
+                   :variable-pitch-family "Maple Mono NF"
+                   :bold-weight semibold
+                   :italic-slant italic
+                   :line-spacing nil)))
+  ;; fontaine-mode only persists the last preset across restarts; it does
+  ;; NOT apply fonts. fontaine-set-preset is what actually sets faces.
+  (fontaine-mode 1)
+  (fontaine-set-preset 'regular))
+
+;; Pixel-perfect vertical alignment for variable-pitch/CJK columns.
+(use-package valign
+  :ensure t
+  :hook (prog-mode . valign-mode)
+  :config
+  ;; Maple Mono NF CN / CJK fallbacks are true 2x-width, so valign's default
+  ;; width table already matches; no need to add custom entry.
+  (setq valign-fancy-bar nil))
 
 
 ;;; Meow Editor
