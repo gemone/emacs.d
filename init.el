@@ -137,7 +137,9 @@
 ;; Pixel-perfect vertical alignment for variable-pitch/CJK columns.
 (use-package valign
   :ensure t
-  :hook (prog-mode . valign-mode)
+  ;; valign only does anything in org buffers (pixel-perfect table alignment,
+  ;; incl. CJK 2x-width glyphs); the old prog-mode hook was a no-op.
+  :hook (org-mode . valign-mode)
   :config
   ;; Maple Mono NF CN / CJK fallbacks are true 2x-width, so valign's default
   ;; width table already matches; no need to add custom entry.
@@ -326,17 +328,12 @@
 (use-package transient
   :ensure t)
 ;; git version
+;; magit-auto-revert-mode is on by default, and magit auto-detects the git
+;; executable itself, so no :hook/:init magic is needed here.
 (use-package magit
   :ensure t
-  :commands (magit-status magit-file-dispatch)
   :bind (("C-x g" . magit-status)
          ("C-x M-g" . magit-file-dispatch))
-  :init
-  ;; Auto-detect git if magit-git-executable is not set in custom.el
-  (unless (boundp 'magit-git-executable)
-    (setq magit-git-executable (or (executable-find "git") "git")))
-  :hook ((magit-status-mode . magit-auto-revert-mode)
-         (after-init . global-magit-file-mode))
   :custom
   (magit-status-sections-hook
    '(
@@ -349,9 +346,7 @@
      magit-insert-unstaged-changes
      magit-insert-staged-changes
      ))
-  (vc-handled-backends '(Git))
-  :config
-  (remove-hook 'find-file-hook 'magit-auto-revert-mode))
+  (vc-handled-backends '(Git)))
 
 ;; ts
 (use-package treesit-auto
