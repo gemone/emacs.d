@@ -533,7 +533,12 @@
          ("C-c c a" . eglot-code-actions)
          ("C-c c o" . eglot-code-action-organize-imports)
          ("C-c c r" . eglot-rename)
-         ("C-c c f" . eglot-format)))
+         ("C-c c f" . eglot-format)
+         ;; Meow normal-state g-prefix: gd / gi / gr (extends my/meow-g-prefix-map)
+         (:map meow-normal-state-keymap
+               ("g d" . xref-find-definitions)
+               ("g i" . xref-find-implementations)
+               ("g r" . xref-find-references))))
 
 ;;; --- Eglot: 语言特定配置 ---
 ;; 下面用到 `eglot-alternatives' 等函数，所以放在 eglot 加载后再执行。
