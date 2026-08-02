@@ -33,10 +33,13 @@
       ((error) (warn "%s" err) (delete-directory repo 'recursive))))
   (unless (require 'elpaca-autoloads nil t)
     (require 'elpaca)
-    (when (eq system-type 'windows-nt)
-      (elpaca-no-symlink-mode))
     (elpaca-generate-autoloads "elpaca" repo)
     (let ((load-source-file-function nil)) (load "./elpaca-autoloads"))))
+;; Windows: build by copying instead of symbolic links. Must be enabled
+;; before the build queue is processed. elpaca-no-symlink-mode is an
+;; autoload, so calling it here auto-loads elpaca.
+(when (eq system-type 'windows-nt)
+  (elpaca-no-symlink-mode 1))
 (add-hook 'after-init-hook #'elpaca-process-queues)
 (elpaca `(,@elpaca-order))
 
