@@ -51,6 +51,37 @@
 
 ;;; Basic emacs config
 (use-package emacs :ensure nil
+  :preface
+  ;; Shared runtime directories, referenced by the `:custom' forms below and
+  ;; by other use-package blocks (savehist, transient, ...).  Semantic split
+  ;; per the XDG Base Directory spec:
+  ;;   state (savehist, eshell, transient history, ...)
+  ;;     -> ~/.local/state/emacs/        (Linux/macOS)
+  ;;     -> %LOCALAPPDATA%\emacs\state\  (Windows)
+  ;;   cache (backups, auto-saves, eln, tree-sitter, ...)
+  ;;     -> ~/.cache/emacs/              (Linux/macOS)
+  ;;     -> %LOCALAPPDATA%\emacs\cache\  (Windows)
+  (require 'xdg)
+  (defvar my/cache-dir
+    (if (eq system-type 'windows-nt)
+        (expand-file-name "emacs/cache/"
+                          (or (getenv "LOCALAPPDATA") (xdg-cache-home)))
+      (expand-file-name "emacs/" (xdg-cache-home))))
+  (defvar my/state-dir
+    (if (eq system-type 'windows-nt)
+        (expand-file-name "emacs/state/"
+                          (or (getenv "LOCALAPPDATA") (xdg-cache-home)))
+      (expand-file-name "emacs/" (xdg-state-home))))
+  (defvar my/backup-dir (expand-file-name "backup/" my/cache-dir))
+  (defvar my/auto-save-dir (expand-file-name "auto-save/" my/cache-dir))
+  (dolist (dir (list my/cache-dir my/state-dir my/backup-dir my/auto-save-dir
+                     (expand-file-name "auto-save-list/" my/cache-dir)
+                     (expand-file-name "eshell/" my/state-dir)
+                     (expand-file-name "transient/" my/state-dir)
+                     (expand-file-name "tree-sitter/" my/cache-dir)
+                     (expand-file-name "eln-cache/" my/cache-dir)))
+    (make-directory dir t))
+  (require 'treesit nil t)
   :custom
   (ring-bell-function #'ignore)
   (initial-frame-alist '((fullscreen . maximized)))
@@ -72,6 +103,34 @@
   ;; useful beyond Corfu.
   (read-extended-command-predicate #'command-completion-default-include-p)
 
+  ;; Backups (foo.el~) -> cache/backup/
+  (backup-directory-alist `(("." . ,my/backup-dir)))
+
+  ;; Auto-saves (#foo.el#) -> cache/auto-save/, still recoverable via
+  ;; `recover-file' (it derives the name the same way).
+  (auto-save-file-name-transforms
+   `((".*" ,(expand-file-name "\\1" my/auto-save-dir) t)))
+  (auto-save-list-file-prefix
+   (expand-file-name "auto-save-list/.saves-" my/cache-dir))
+
+  ;; eshell history is state, not cache
+  (eshell-directory-name (expand-file-name "eshell/" my/state-dir))
+
+  ;; Native-compiled elisp files are a pure cache
+  (native-comp-eln-load-path
+   (cons (expand-file-name "eln-cache/" my/cache-dir)
+         (cdr native-comp-eln-load-path)))
+
+  ;; Tree-sitter grammars are compiled caches
+  (treesit-extra-load-path
+   (if (boundp 'treesit-extra-load-path)
+       (cons (expand-file-name "tree-sitter/" my/cache-dir)
+             treesit-extra-load-path)))
+
+  ;; Auto-revert buffers when the file on disk changes
+  (auto-revert-verbose nil)
+  (global-auto-revert-non-file-buffers t)
+
   :config
   (set-frame-parameter nil 'alpha-background 95)
 
@@ -81,7 +140,19 @@
 
   (context-menu-mode t)
 
-  (show-paren-mode t))
+  (show-paren-mode t)
+
+  (global-auto-revert-mode 1)
+
+  ;; Emacs 30 hard-codes the tree-sitter install dir under
+  ;; `user-emacs-directory'; redirect future installs into the cache too.
+  (when (fboundp 'treesit-install-language-grammar)
+    (defun my/treesit-install-to-cache (orig-fun lang &optional out-dir)
+      "Call ORIG-FUN, defaulting OUT-DIR to the cache grammar dir."
+      (funcall orig-fun lang
+               (or out-dir (expand-file-name "tree-sitter/" my/cache-dir))))
+    (advice-add 'treesit-install-language-grammar
+                :around #'my/treesit-install-to-cache)))
 
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
 (load custom-file 'no-error 'no-message)
@@ -311,6 +382,9 @@
 
 (use-package savehist
   :ensure nil
+  :custom
+  ;; Minibuffer history is persistent state, not cache
+  (savehist-file (expand-file-name "history" my/state-dir))
   :init
   (savehist-mode))
 
@@ -356,7 +430,10 @@
 
 ;;; Coding
 (use-package transient
-  :ensure t)
+  :ensure t
+  :custom
+  ;; Transient (magit) history is persistent state
+  (transient-history-file (expand-file-name "transient/history.el" my/state-dir)))
 ;; git version
 ;; magit-auto-revert-mode is on by default, and magit auto-detects the git
 ;; executable itself, so no :hook/:init magic is needed here.
@@ -401,4 +478,3 @@
 (use-package ghostel
   :ensure t
   :bind ("C-x m" . ghostel))
-
