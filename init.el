@@ -63,7 +63,7 @@
   ;; `completion-at-point' is often bound to M-TAB.
   (tab-always-indent 'complete)
 
-    ;; Emacs 30 and newer: Disable Ispell completion function.
+  ;; Emacs 30 and newer: Disable Ispell completion function.
   ;; Try `cape-dict' as an alternative.
   (text-mode-ispell-word-completion nil)
 
@@ -184,6 +184,36 @@
   (meow-normal-define-key
    '("C-M-w" . kill-region))
   (setq meow--kbd-kill-region "C-M-w")
+
+  ;; Vim-style paging in NORMAL state (vim 翻页):
+  ;;   C-f / C-b : full page down / up
+  ;;   C-d / C-u : half  page down / up
+  ;;
+  ;; meow simulates C-f/C-b/C-d internally (forward-char, backward-char,
+  ;; delete-char) by looking the keys up in the current keymap, so rebinding
+  ;; them here would break h/l/d.  Point the kbd macros at the command
+  ;; symbols directly (meow--execute-kbd-macro accepts symbols) to free the
+  ;; keys; same pattern as the C-w -> C-M-w move above.
+  (setq meow--kbd-forward-char  #'forward-char)
+  (setq meow--kbd-backward-char #'backward-char)
+  (setq meow--kbd-delete-char   #'delete-char)
+
+  (defun my/meow-page-half-down (&optional arg)
+    "Scroll view down by half a window ARG times (vim `C-d')."
+    (interactive "p")
+    (when (region-active-p) (meow-cancel-selection))
+    (scroll-up-command (* arg (max 1 (/ (window-text-height) 2)))))
+  (defun my/meow-page-half-up (&optional arg)
+    "Scroll view up by half a window ARG times (vim `C-u')."
+    (interactive "p")
+    (when (region-active-p) (meow-cancel-selection))
+    (scroll-down-command (* arg (max 1 (/ (window-text-height) 2)))))
+
+  (meow-normal-define-key
+   '("C-f" . meow-page-down)
+   '("C-b" . meow-page-up)
+   '("C-d" . my/meow-page-half-down)
+   '("C-u" . my/meow-page-half-up))
 
   (meow-motion-define-key
    '("j" . meow-next)
