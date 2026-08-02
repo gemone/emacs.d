@@ -1,4 +1,11 @@
 ;;; init.el --- user init -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;; Personal Emacs configuration.
+
+;;; Code:
+
 ;;; Package Manager
 (defvar elpaca-installer-version 0.12)
 (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
@@ -429,6 +436,44 @@
 
 
 ;;; Coding
+;; Relative line numbers in prog-mode, with a big-file fallback to
+;; absolute numbers (relative numbering re-renders on every cursor move).
+(use-package prog-mode
+  :ensure nil
+  :preface
+  (defun my/disable-line-numbers ()
+    "Turn off display line numbers in the current buffer."
+    (display-line-numbers-mode -1))
+  :bind (:map prog-mode-map
+         ("C-c l" . my/cycle-line-numbers))
+  :hook (prog-mode . my/prog-mode-line-numbers-setup)
+  :custom
+  (display-line-numbers-type 'relative)
+  (display-line-numbers-current-absolute t)
+  (display-line-numbers-grow-only t)
+  :config
+  (defun my/prog-mode-line-numbers-setup ()
+    "Enable line numbers: relative normally, absolute in large buffers."
+    (display-line-numbers-mode 1)
+    (setq-local display-line-numbers
+                (if (> (count-lines (point-min) (point-max)) 5000)
+                    'absolute
+                  'relative)))
+  (defun my/cycle-line-numbers ()
+    "Cycle line-number style: relative -> absolute -> off."
+    (interactive)
+    (cond
+     ((eq display-line-numbers 'relative)
+      (setq-local display-line-numbers 'absolute)
+      (message "Line numbers: absolute"))
+     ((eq display-line-numbers 'absolute)
+      (display-line-numbers-mode -1)
+      (message "Line numbers: off"))
+     (t
+      (display-line-numbers-mode 1)
+      (setq-local display-line-numbers 'relative)
+      (message "Line numbers: relative")))))
+
 (use-package transient
   :ensure t
   :custom
@@ -461,16 +506,166 @@
   :config
   (global-treesit-auto-mode))
 
+;; uv/npm 全局工具目录（rass/ty/ruff/ngserver 等 LSP 服务器所在处）
+;; exec-path 只管 Emacs 自己找程序；子进程（如 rass 再拉起 ty/ruff）
+;; 继承的是 PATH 环境变量，所以两者都要设置。
+(let* ((bin (expand-file-name "~/.local/bin"))
+       (old (or (getenv "PATH") ""))
+       (new (mapconcat #'identity (cons bin (parse-colon-path old)) ":")))
+  (add-to-list 'exec-path bin)
+  (setenv "PATH" new))
+
+;;; Eglot (LSP client, built-in since Emacs 29)
+(use-package eglot
+  :ensure nil
+  :hook ((prog-mode . (lambda ()
+                        (unless (eq major-mode 'emacs-lisp-mode)
+                          (eglot-ensure)))))
+  :custom
+  (eglot-autoshutdown t)
+  (eglot-send-changes-idle-time 0.1)
+  (eglot-extend-to-xref t)
+  :config
+  (add-hook 'eglot-managed-mode-hook #'eglot-inlay-hints-mode)
+  (add-hook 'before-save-hook
+            (lambda () (when (eglot-managed-p) (eglot-format))))
+  :bind (:map eglot-mode-map
+         ("C-c c a" . eglot-code-actions)
+         ("C-c c o" . eglot-code-action-organize-imports)
+         ("C-c c r" . eglot-rename)
+         ("C-c c f" . eglot-format)))
+
+;;; --- Eglot: 语言特定配置 ---
+;; 下面用到 `eglot-alternatives' 等函数，所以放在 eglot 加载后再执行。
+
+;; Python: ty（类型检查）+ ruff（lint/格式化）
+;; Eglot 每个 buffer 只能连一个 LSP server，所以用 rassumfrassum (rass)
+;; 把两个 server 合并成一条 stdio 连接：`rass python' 等价于
+;; `rass -- ty server -- ruff server'。
+;; 安装：uv tool install rassumfrassum ty ruff（可执行文件在 ~/.local/bin）
+;; ty/ruff 各自的配置写在项目的 pyproject.toml（[tool.ty] / [tool.ruff]）。
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               `((python-mode python-ts-mode)
+                 .
+                 ,(eglot-alternatives
+                   '(("rass" "python")            ; ty + ruff（推荐）
+                     ("ty" "server")              ; 仅 ty
+                     ("ruff" "server")            ; 仅 ruff
+                     ("basedpyright-langserver" "--stdio"))))))
+
+;; Java: Eclipse JDT Language Server (jdtls)
+;; `-data' 指向缓存目录，避免 workspace 元数据散落到项目里
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               `((java-mode java-ts-mode)
+                 .
+                 ("jdtls"
+                  "-data" ,(expand-file-name "jdtls-workspace" my/cache-dir)))))
+
+;;; --- Eglot: Angular / web-mode ---
+;; npm 的 @angular/language-server 包提供的可执行文件叫 `ngserver'。
+;; - .ts/.tsx 文件：Angular 项目用 ngserver，否则 typescript-language-server
+;; - .html 模板（web-mode/html-ts-mode 等）：Eglot 每个 buffer 只能连一个
+;;   LSP server，所以 Angular 项目里用 rass 把 ngserver + vscode-html-language-server
+;;   + vscode-css-language-server 三个 server 合并成一条连接；
+;;   普通项目回退到默认 HTML server。
+;; 安装：npm install -g @angular/language-server @angular/language-service
+;;       typescript typescript-language-server vscode-langservers-extracted
+
+(defun my/angular-project-p ()
+  "Return non-nil if current project is an Angular project."
+  (when-let* ((project (project-current))
+              (root (expand-file-name (project-root project))))
+    (or (file-exists-p (expand-file-name "angular.json" root))
+        (file-exists-p (expand-file-name "project.json" root)))))
+
+(defun my/angular-probes ()
+  "Return comma-separated probe paths for `ngserver'."
+  (let* ((root (expand-file-name (project-root (project-current))))
+         (local-nm (expand-file-name "node_modules" root))
+         (global-nm (string-trim (shell-command-to-string "npm root -g")))
+         (probes (delq nil
+                       (list (when (file-directory-p local-nm) local-nm)
+                             (unless (string-empty-p global-nm) global-nm)))))
+    (mapconcat #'identity probes ",")))
+
+(defun my/angular-ls-command ()
+  "Return command for `ngserver' with probe locations."
+  (list "ngserver" "--stdio"
+        "--tsProbeLocations" (my/angular-probes)
+        "--ngProbeLocations" (my/angular-probes)))
+
+(defun my/angular-ts-contact (_interactive)
+  "Use Angular server for Angular projects, else `typescript-language-server'."
+  (if (my/angular-project-p)
+      (my/angular-ls-command)
+    '("typescript-language-server" "--stdio")))
+
+(defun my/angular-web-contact (_interactive)
+  "HTML/web-mode 多服务器方案.
+
+Angular 项目里用 rass 合并 ngserver + vscode-html-language-server
++ vscode-css-language-server；普通项目回退到默认 HTML server。"
+  (if (my/angular-project-p)
+      (list "rass" "--"
+            "ngserver" "--stdio"
+            "--tsProbeLocations" (my/angular-probes)
+            "--ngProbeLocations" (my/angular-probes)
+            "--" "vscode-html-language-server" "--stdio"
+            "--" "vscode-css-language-server" "--stdio")
+    (eglot-alternatives
+     '(("vscode-html-language-server" "--stdio")
+       ("html-languageserver" "--stdio")))))
+
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               '(((typescript-ts-mode :language-id "typescript")
+                  (typescript-mode :language-id "typescript")
+                  (tsx-ts-mode :language-id "typescriptreact"))
+                 . my/angular-ts-contact))
+  (add-to-list 'eglot-server-programs
+               '(((html-mode :language-id "html")
+                  (html-ts-mode :language-id "html")
+                  (web-mode :language-id "html"))
+                 . my/angular-web-contact)))
+
+;;; Elisp 语法/静态检查（Emacs Lisp 没有 LSP server）
+(use-package elisp-mode
+  :ensure nil
+  :hook ((emacs-lisp-mode . flymake-mode)
+         ;; 配置类文件只保留 checkdoc 后端：byte-compile 子进程的 load-path
+         ;; 只有 "./"，看不到 Elpaca 安装的包，会产生大量"函数未定义"噪音。
+         (emacs-lisp-mode . (lambda ()
+                              (remove-hook 'flymake-diagnostic-functions
+                                           #'elisp-flymake-byte-compile t))))
+  :config
+  ;; Emacs 30 的 `emacs-lisp-mode' 默认注册两个 flymake 后端：
+  ;; `elisp-flymake-byte-compile'（编译错误，已在上方移除）和
+  ;; `elisp-flymake-checkdoc'（文档/风格，保留）
+  (setq-default checkdoc-package-keywords-flag nil))
+
 ;; LLM coding agents in Emacs. Independent, pick one per task.
 ;; Requires `codex` and `pi` CLIs on PATH.
 
 ;; Codex: native client for `codex app-server`. Open via M-x codex-ide-menu.
 (use-package codex-ide
-  :ensure (:host github :repo "dgillis/emacs-codex-ide"))
+  :ensure (:host github :repo "dgillis/emacs-codex-ide")
+  :bind (("C-c C-a" . codex-ide-menu))
+  :config
+  ;; IDE 面板/会话 buffer 不显示行号
+  (add-hook 'codex-ide-session-mode-hook #'my/disable-line-numbers)
+  (add-hook 'codex-ide-loop-mode-hook #'my/disable-line-numbers)
+  (add-hook 'codex-ide-section-mode-hook #'my/disable-line-numbers)
+  (add-hook 'codex-ide-log-mode-hook #'my/disable-line-numbers)
+  (add-hook 'codex-ide-session-buffer-list-mode-hook #'my/disable-line-numbers))
 
 ;; Pi: frontend for the `pi` CLI. Open via M-x pi-coding-agent.
 (use-package pi-coding-agent
-  :ensure t)
+  :ensure t
+  :config
+  (add-hook 'pi-coding-agent-chat-mode-hook #'my/disable-line-numbers)
+  (add-hook 'pi-coding-agent-input-mode-hook #'my/disable-line-numbers))
 
 ;; Ghostel: fast terminal emulator using libghostty-vt.
 ;; Requires dynamic module support (module-file-suffix non-nil).
@@ -478,3 +673,7 @@
 (use-package ghostel
   :ensure t
   :bind ("C-x m" . ghostel))
+
+(provide 'init)
+
+;;; init.el ends here
