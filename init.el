@@ -359,11 +359,14 @@
   :config
   (global-treesit-auto-mode))
 
-;; agent-shell: LLM agent UI over ACP. codex + pi.
-;; Both adapters via npx (uniform): no global install, always latest.
-(use-package agent-shell
-  :ensure t
-  :custom
-  (agent-shell-openai-codex-acp-command '("npx" "-y" "@agentclientprotocol/codex-acp"))
-  (agent-shell-pi-acp-command '("npx" "-y" "pi-acp")))
+;; LLM coding agents in Emacs. Independent, pick one per task.
+;; Requires `codex` and `pi` CLIs on PATH.
+
+;; Codex: native client for `codex app-server`. Open via M-x codex-ide-menu.
+(use-package codex-ide
+  :ensure (:host github :repo "dgillis/emacs-codex-ide"))
+
+;; Pi: frontend for the `pi` CLI. Open via M-x pi-coding-agent.
+(use-package pi-coding-agent
+  :ensure t)
 

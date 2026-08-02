@@ -34,11 +34,14 @@ git config --global gc.auto 256
 - `"no_proxy"`: 不走代理的地址（正则）
 - 留空 `("http" . "")` 表示该协议不走代理；整个变量设为 `nil` 关闭代理
 
-## agent-shell
+## LLM 编程 agent
 
-[agent-shell](https://github.com/xenodium/agent-shell) 通过 [ACP](https://agentclientprotocol.com) 在 Emacs 内交互 LLM agent。当前配置了 codex 和 pi。
+Emacs 内两个独立 agent 前端，按任务选其一：
 
-使用前需分别登录两个 agent CLI（各自存凭证）：
+- **codex** — [`emacs-codex-ide`](https://github.com/dgillis/emacs-codex-ide)，原生 Codex 客户端（`codex app-server`）。启动 `M-x codex-ide-menu`
+- **pi** — [`pi-coding-agent`](https://github.com/dnouri/pi-coding-agent)，Pi CLI 的 Emacs 前端。启动 `M-x pi-coding-agent`
 
-- **codex**：需要 `codex` 完成登录，见 [codex 文档](https://code.claude.com/docs/en/overview)
-- **pi**：终端跑 `pi` 完成 provider/API key 配置，凭证存 `~/.pi/agent/`
+使用前需登录各自 CLI（凭证独立）：
+
+- **codex**：终端 `codex` 完成登录，见 [codex 文档](https://code.claude.com/docs/en/overview)
+- **pi**：终端 `pi` 完成 provider/API key 配置，凭证存 `~/.pi/agent/`，见 [pi 文档](https://github.com/dnouri/pi-coding-agent#install-pi-and-authenticate-)
