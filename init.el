@@ -435,6 +435,26 @@
   (corfu-popupinfo-mode))
 
 
+;;; IBuffer & isearch
+;; ibuffer is the built-in Dired-like buffer manager (Emacs 30.2).
+;; isearch-related keys (all built-in defaults):
+;;   C-s / C-r   : incremental search over the buffer list
+;;   M-s a C-s   : incremental search in marked buffers (ibuffer-do-isearch)
+;;   M-s a C-M-s : same, regexp variant (ibuffer-do-isearch-regexp)
+;;   Filtering (/ prefix): / n name  / b basename  / f filename  / m mode  / c content
+(use-package ibuffer
+  :ensure nil
+  :bind (("C-x C-b" . ibuffer)   ; use ibuffer instead of the default list-buffers
+         :map ibuffer-mode-map
+         ;; Already bound by default; declared here for clarity and easy override
+         ("M-s a C-s" . ibuffer-do-isearch)
+         ("M-s a C-M-s" . ibuffer-do-isearch-regexp))
+  :hook ((ibuffer-mode . hl-line-mode)
+         (ibuffer-mode . ibuffer-auto-mode))
+  :custom
+  (ibuffer-default-sorting-mode 'recency)
+  (ibuffer-show-empty-filter-groups nil))
+
 ;;; Coding
 ;; Relative line numbers in prog-mode, with a big-file fallback to
 ;; absolute numbers (relative numbering re-renders on every cursor move).
