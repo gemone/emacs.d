@@ -520,24 +520,50 @@
      ))
   (vc-handled-backends '(Git)))
 
+;;; Project management
+(use-package projectile
+  :ensure t
+  :init
+  (projectile-mode +1)
+  :custom
+  (projectile-switch-project-action #'projectile-find-file)
+  (projectile-completion-system 'default))
+
+(use-package fzf
+  :ensure t
+  :bind (("C-c f" . fzf)))
+
+(use-package treemacs
+  :ensure t
+  :defer t
+  :config
+  ;; treemacs resets this at load time, so set it here to keep it applied.
+  (setq treemacs-collapse-dirs 1)
+  :bind (("C-c t" . treemacs)
+         ("C-c T" . treemacs-select-window)))
+
+(use-package treemacs-projectile
+  :ensure t
+  :defer t
+  :after (treemacs projectile))
+
 ;; ts
 (use-package treesit-auto
   :ensure t
   :config
   (global-treesit-auto-mode))
 
-;; uv/npm 全局工具目录（rass/ty/ruff/ngserver 等 LSP 服务器所在处）
-;; exec-path 只管 Emacs 自己找程序；子进程（如 rass 再拉起 ty/ruff）
-;; 继承的是 PATH 环境变量，所以两者都要设置。
-(let* ((bin (expand-file-name "~/.local/bin"))
-       (old (or (getenv "PATH") ""))
-       (new (mapconcat #'identity (cons bin (parse-colon-path old)) ":")))
-  (add-to-list 'exec-path bin)
-  (setenv "PATH" new))
-
 ;;; Eglot (LSP client, built-in since Emacs 29)
 (use-package eglot
   :ensure nil
+  :init
+  ;; PATH for LSP servers under ~/.local/bin (rass/ty/ruff/ngserver).
+  ;; Subprocesses inherit PATH, not exec-path, so set both.
+  (let* ((bin (expand-file-name "~/.local/bin"))
+         (old (or (getenv "PATH") ""))
+         (new (mapconcat #'identity (cons bin (parse-colon-path old)) ":")))
+    (add-to-list 'exec-path bin)
+    (setenv "PATH" new))
   :hook ((prog-mode . (lambda ()
                         (unless (eq major-mode 'emacs-lisp-mode)
                           (eglot-ensure)))))
@@ -579,81 +605,225 @@
                      ("ruff" "server")            ; 仅 ruff
                      ("basedpyright-langserver" "--stdio"))))))
 
-;; Java: Eclipse JDT Language Server (jdtls)
-;; `-data' 指向缓存目录，避免 workspace 元数据散落到项目里
-(with-eval-after-load 'eglot
+;;; --- Java: full development environment (jdtls + eglot-java + dape + java-server) ---
+;; References:
+;;   - https://emacs-china.org/t/emacs-eglot-eglot-java-dape-java/30086
+;;   - https://github.com/LuciusChen/java-server
+;;
+;; Components:
+;;   - eglot-java: eglot extension for JDTLS. Downloads eclipse.jdt.ls on the
+;;     first open of a .java file (upgrade manually with
+;;     `M-x eglot-java-upgrade-lsp-server'), and provides project/class
+;;     creation, Maven/Gradle build tasks, and JUnit running (C-u prefix
+;;     enters debug mode, JPDA port 8000).
+;;   - dape: DAP client. The built-in `jdtls' config launches the main class;
+;;     the `jdtls-jpda' config below attaches to the JPDA port of
+;;     JUnit/external Tomcat (forum approach: dape -> java-debug adapter
+;;     -> target JVM).
+;;   - java-server: LuciusChen's toolkit. Multi-JDK switching, external
+;;     Tomcat deploy/stop, Spring Boot run/stop, hot code replace (HCR).
+;;
+;; External dependencies:
+;;   - JDK 17+ (required by jdtls; switch with java-server-select-jdk
+;;     for older projects)
+;;   - Maven or Gradle (build; prefer the project's own wrapper)
+;;   - java-debug plugin jar (required by dape; run `mvn -DskipTests package'
+;;     in the microsoft/java-debug repo; the jar lands under extension/server/)
+;;   - External Tomcat only needed for WAR deployment (macOS: brew install tomcat@9)
+
+(use-package eglot-java
+  :preface
+  (defun my/java-debug-plugin-jar ()
+    ;; Return the first java-debug plugin jar found in common locations.
+    (let ((roots (list (expand-file-name "java-debug" my/cache-dir)
+                       (expand-file-name "java-debug" "~")
+                       (expand-file-name "debug-adapters" my/cache-dir)
+                       "/tmp/java-debug")))
+      (catch 'found
+        (dolist (root roots)
+          (dolist (sub '("extension/server" "server" ""))
+            (let ((dir (expand-file-name sub root)))
+              (when (file-directory-p dir)
+                (dolist (file (directory-files
+                               dir t "^com\\.microsoft\\.java\\.debug\\.plugin-.*\\.jar$"))
+                  (throw 'found file)))))))))
+  (defun my/eglot-java-init-options (_server _jdt)
+    ;; JDTLS initialization options: load the java-debug bundle for dape.
+    (when-let* ((jar (my/java-debug-plugin-jar)))
+      `(:bundles [,jar])))
+  :ensure t
+  :after eglot
+  :hook ((java-mode java-ts-mode) . eglot-java-mode)
+  :custom
+  ;; eglot-java rewrites `eglot-server-programs' by default; keep manual
+  ;; control so java-mode and java-ts-mode share the same jdtls entry.
+  (eglot-java-eglot-server-programs-manual-updates t)
+  ;; Keep jdtls workspace metadata in the cache dir (the old `-data')
+  (eglot-java-eclipse-jdt-cache-directory
+   (expand-file-name "jdtls-workspace" my/cache-dir))
+  :config
+  ;; Load the java-debug bundle so dape can spawn the adapter via JDTLS
+  (setq eglot-java-user-init-opts-fn #'my/eglot-java-init-options)
   (add-to-list 'eglot-server-programs
-               `((java-mode java-ts-mode)
-                 .
-                 ("jdtls"
-                  "-data" ,(expand-file-name "jdtls-workspace" my/cache-dir)))))
+               '((java-mode java-ts-mode) . eglot-java--eclipse-contact))
+  :bind (:map eglot-java-mode-map
+         ("C-c j n" . eglot-java-file-new)
+         ("C-c j N" . eglot-java-project-new)
+         ("C-c j t" . eglot-java-run-test)          ; C-u = debug (JPDA :8000)
+         ("C-c j T" . eglot-java-project-build-task)
+         ("C-c j R" . eglot-java-project-build-refresh)
+         ("C-c j m" . eglot-java-run-main)          ; C-u = debug
+         ("C-c j u" . eglot-java-upgrade-lsp-server)
+         ("C-c j U" . eglot-java-upgrade-junit-jar)))
+
+(use-package dape
+  :preface
+  (defun my/dape-jdtls-jpda-ensure (_config)
+    ;; Ensure the current buffer has a JDTLS server with java-debug.
+    (let ((server (and (featurep 'eglot) (eglot-current-server))))
+      (unless server
+        (user-error "No active JDTLS (eglot) server in buffer %s" (current-buffer)))
+      (unless (seq-contains-p
+               (ignore-errors (eglot--server-capable :executeCommandProvider :commands))
+               "vscode.java.startDebugSession")
+        (user-error "JDTLS does not have the java-debug plugin loaded; cannot start the debug adapter")))
+    t)
+  (defun my/dape-jdtls-jpda-fn (config)
+    ;; Point dape at a java-debug adapter spawned by the current JDTLS.
+    ;; The target JVM's JPDA port comes from `:jpda-port' (default 8000,
+    ;; matching the debug port used by `eglot-java-run-test').
+    (let* ((server (eglot-current-server))
+           (adapter-port (eglot-execute-command
+                          server "vscode.java.startDebugSession" nil)))
+      (thread-first config
+        (plist-put 'host "localhost")
+        (plist-put 'port adapter-port)
+        (plist-put :type "java")
+        (plist-put :request "attach")
+        (plist-put :hostName "localhost")
+        (plist-put :port (or (plist-get config :jpda-port) 8000))
+        (plist-put :projectName (project-name (project-current t))))))
+  :ensure t
+  :custom
+  ;; Use `kbd' (not a raw string): dape calls `global-set-key' with this
+  ;; value at load time, and a plain "C-c d" string would be read as the
+  ;; literal characters C - c SPC d instead of a key sequence.
+  (dape-key-prefix (kbd "C-c d"))
+  (dape-buffer-window-arrangement 'right)
+  :config
+  (repeat-mode +1)
+  (add-hook 'dape-display-source-hook #'pulse-momentary-highlight-one-line)
+  ;; JPDA attach for JUnit / external Tomcat (forum approach):
+  ;; dape -> java-debug adapter (spawned by JDTLS) -> target JVM (JPDA port)
+  (add-to-list 'dape-configs
+               '(jdtls-jpda
+                 modes (java-mode java-ts-mode)
+                 ensure my/dape-jdtls-jpda-ensure
+                 fn my/dape-jdtls-jpda-fn
+                 :request "attach"
+                 :type "java"
+                 :hostName "localhost"
+                 :jpda-port 8000
+                 :projectName nil)))
+
+;; java-server: LuciusChen's Java server development toolkit
+;; (multi-JDK switching, Tomcat deploy, Spring Boot run/stop, HCR)
+(use-package java-server
+  :ensure (:host github :repo "LuciusChen/java-server")
+  :after (eglot dape)
+  :hook ((java-mode java-ts-mode) . java-server-mode)
+  :custom
+  ;; Keep generated artifacts in the cache dir (XDG semantics);
+  ;; don't clutter ~/.emacs.d
+  (java-server-debug-adapters-dir (expand-file-name "debug-adapters" my/cache-dir))
+  (java-server-tomcat-instances-dir (expand-file-name "java-server/tomcat" my/cache-dir))
+  (java-server-direct-attach-hcr-helper-dir (expand-file-name "java-server/hcr" my/cache-dir))
+  :bind (:map java-server-mode-map
+         ("C-c J j" . java-server-select-jdk)
+         ("C-c J a" . java-server-auto-select-jdk)
+         ("C-c J t" . java-server-tomcat-deploy)    ; C-u = JPDA debug
+         ("C-c J T" . java-server-tomcat-stop)
+         ("C-c J s" . java-server-spring-boot-run)  ; C-u = JPDA debug
+         ("C-c J S" . java-server-spring-boot-stop)
+         ("C-c J h" . java-server-hot-replace)
+         ("C-c J d" . dape)))
 
 ;;; --- Eglot: Angular / web-mode ---
-;; npm 的 @angular/language-server 包提供的可执行文件叫 `ngserver'。
-;; - .ts/.tsx 文件：Angular 项目用 ngserver，否则 typescript-language-server
-;; - .html 模板（web-mode/html-ts-mode 等）：Eglot 每个 buffer 只能连一个
-;;   LSP server，所以 Angular 项目里用 rass 把 ngserver + vscode-html-language-server
-;;   + vscode-css-language-server 三个 server 合并成一条连接；
-;;   普通项目回退到默认 HTML server。
-;; 安装：npm install -g @angular/language-server @angular/language-service
-;;       typescript typescript-language-server vscode-langservers-extracted
+;; ngserver (from @angular/language-server) for Angular projects,
+;; typescript-language-server otherwise.  Since Eglot allows one server per
+;; buffer, Angular .html buffers use `rass' to merge ngserver +
+;; vscode-html-language-server + vscode-css-language-server into one
+;; connection; other projects fall back to the default HTML server.
+;; Install: npm install -g @angular/language-server @angular/language-service
+;;          typescript typescript-language-server vscode-langservers-extracted
+;;
+;; typescript-ts-mode / tsx-ts-mode / html-ts-mode are built-in (Emacs 29+)
+;; and autoloaded, so plain symbol references suffice; no :ensure.
+;; typescript-mode is the separate GNU ELPA package; it never matches when
+;; absent.
+;;
+;; Helpers are only used here, so they live in this use-package.  Note: the
+;; rules are registered when web-mode first loads; opening .ts before any HTML
+;; template falls back to the default typescript-language-server.
+(use-package web-mode
+  :ensure t
+  :config
+  (defun my/angular-project-p ()
+    "Return non-nil if current project is an Angular project."
+    (when-let* ((project (project-current))
+                (root (expand-file-name (project-root project))))
+      (or (file-exists-p (expand-file-name "angular.json" root))
+          (file-exists-p (expand-file-name "project.json" root)))))
 
-(defun my/angular-project-p ()
-  "Return non-nil if current project is an Angular project."
-  (when-let* ((project (project-current))
-              (root (expand-file-name (project-root project))))
-    (or (file-exists-p (expand-file-name "angular.json" root))
-        (file-exists-p (expand-file-name "project.json" root)))))
+  (defun my/angular-probes ()
+    "Return comma-separated probe paths for `ngserver'."
+    (let* ((root (expand-file-name (project-root (project-current))))
+           (local-nm (expand-file-name "node_modules" root))
+           (global-nm (string-trim (shell-command-to-string "npm root -g")))
+           (probes (delq nil
+                         (list (when (file-directory-p local-nm) local-nm)
+                               (unless (string-empty-p global-nm) global-nm)))))
+      (mapconcat #'identity probes ",")))
 
-(defun my/angular-probes ()
-  "Return comma-separated probe paths for `ngserver'."
-  (let* ((root (expand-file-name (project-root (project-current))))
-         (local-nm (expand-file-name "node_modules" root))
-         (global-nm (string-trim (shell-command-to-string "npm root -g")))
-         (probes (delq nil
-                       (list (when (file-directory-p local-nm) local-nm)
-                             (unless (string-empty-p global-nm) global-nm)))))
-    (mapconcat #'identity probes ",")))
+  (defun my/angular-ls-command ()
+    "Return command for `ngserver' with probe locations."
+    (list "ngserver" "--stdio"
+          "--tsProbeLocations" (my/angular-probes)
+          "--ngProbeLocations" (my/angular-probes)))
 
-(defun my/angular-ls-command ()
-  "Return command for `ngserver' with probe locations."
-  (list "ngserver" "--stdio"
-        "--tsProbeLocations" (my/angular-probes)
-        "--ngProbeLocations" (my/angular-probes)))
+  (defun my/angular-ts-contact (_interactive)
+    "Use Angular server for Angular projects, else `typescript-language-server'."
+    (if (my/angular-project-p)
+        (my/angular-ls-command)
+      '("typescript-language-server" "--stdio")))
 
-(defun my/angular-ts-contact (_interactive)
-  "Use Angular server for Angular projects, else `typescript-language-server'."
-  (if (my/angular-project-p)
-      (my/angular-ls-command)
-    '("typescript-language-server" "--stdio")))
+  (defun my/angular-web-contact (_interactive)
+    "Return the HTML server contact for Angular or generic projects.
 
-(defun my/angular-web-contact (_interactive)
-  "HTML/web-mode 多服务器方案.
+Angular projects merge ngserver + vscode-html-language-server +
+vscode-css-language-server via `rass'; others use the default HTML server."
+    (if (my/angular-project-p)
+        (list "rass" "--"
+              "ngserver" "--stdio"
+              "--tsProbeLocations" (my/angular-probes)
+              "--ngProbeLocations" (my/angular-probes)
+              "--" "vscode-html-language-server" "--stdio"
+              "--" "vscode-css-language-server" "--stdio")
+      (eglot-alternatives
+       '(("vscode-html-language-server" "--stdio")
+         ("html-languageserver" "--stdio")))))
 
-Angular 项目里用 rass 合并 ngserver + vscode-html-language-server
-+ vscode-css-language-server；普通项目回退到默认 HTML server。"
-  (if (my/angular-project-p)
-      (list "rass" "--"
-            "ngserver" "--stdio"
-            "--tsProbeLocations" (my/angular-probes)
-            "--ngProbeLocations" (my/angular-probes)
-            "--" "vscode-html-language-server" "--stdio"
-            "--" "vscode-css-language-server" "--stdio")
-    (eglot-alternatives
-     '(("vscode-html-language-server" "--stdio")
-       ("html-languageserver" "--stdio")))))
-
-(with-eval-after-load 'eglot
-  (add-to-list 'eglot-server-programs
-               '(((typescript-ts-mode :language-id "typescript")
-                  (typescript-mode :language-id "typescript")
-                  (tsx-ts-mode :language-id "typescriptreact"))
-                 . my/angular-ts-contact))
-  (add-to-list 'eglot-server-programs
-               '(((html-mode :language-id "html")
-                  (html-ts-mode :language-id "html")
-                  (web-mode :language-id "html"))
-                 . my/angular-web-contact)))
+  (with-eval-after-load 'eglot
+    (add-to-list 'eglot-server-programs
+                 '(((typescript-ts-mode :language-id "typescript")
+                    (typescript-mode :language-id "typescript")
+                    (tsx-ts-mode :language-id "typescriptreact"))
+                   . my/angular-ts-contact))
+    (add-to-list 'eglot-server-programs
+                 '(((html-mode :language-id "html")
+                    (html-ts-mode :language-id "html")
+                    (web-mode :language-id "html"))
+                   . my/angular-web-contact))))
 
 ;;; Elisp 语法/静态检查（Emacs Lisp 没有 LSP server）
 (use-package elisp-mode
@@ -669,6 +839,28 @@ Angular 项目里用 rass 合并 ngserver + vscode-html-language-server
   ;; `elisp-flymake-byte-compile'（编译错误，已在上方移除）和
   ;; `elisp-flymake-checkdoc'（文档/风格，保留）
   (setq-default checkdoc-package-keywords-flag nil))
+
+;;; --- Markdown: code block editing ---
+;; markdown-mode 2.8+ (MELPA).  Code blocks get the language's major mode:
+;; native font-lock in place, and a dedicated indirect buffer for editing via
+;; `C-c '' (`markdown-edit-code-block', needs `edit-indirect').  The mode is
+;; picked by `markdown-get-lang-mode': explicit `markdown-code-lang-modes'
+;; first, then *-ts-mode when the tree-sitter grammar is available, else
+;; plain *-mode.
+(use-package markdown-mode
+  :ensure t
+  :custom
+  (markdown-fontify-code-blocks-natively t)
+  :config
+  ;; "ts"/"js" grammars are named "typescript"/"javascript", so the ts-modes
+  ;; can't be inferred from the fence language.
+  (dolist (pair '(("ts" . typescript-ts-mode)
+                  ("js" . js-ts-mode)))
+    (add-to-list 'markdown-code-lang-modes pair)))
+
+(use-package edit-indirect
+  :ensure t
+  :after markdown-mode)
 
 ;; LLM coding agents in Emacs. Independent, pick one per task.
 ;; Requires `codex` and `pi` CLIs on PATH.
