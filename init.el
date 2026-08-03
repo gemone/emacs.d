@@ -115,8 +115,17 @@
 
   ;; Auto-saves (#foo.el#) -> cache/auto-save/, still recoverable via
   ;; `recover-file' (it derives the name the same way).
+  ;;
+  ;; Use `concat' + `file-name-as-directory', NOT `expand-file-name':
+  ;; (expand-file-name "\\1" DIR) treats "\\1" as an absolute path on
+  ;; Windows (backslash is a separator there) and silently drops DIR,
+  ;; collapsing the replacement to the drive root ("c:/1"), so the
+  ;; autosave file ends up under "C:\\#..." and the write fails -- no
+  ;; autosave/recover file is ever produced.  `concat' keeps DIR and
+  ;; preserves the "\\1" backref on every platform; on POSIX the result
+  ;; is identical to the old `expand-file-name' form.
   (auto-save-file-name-transforms
-   `((".*" ,(expand-file-name "\\1" my/auto-save-dir) t)))
+   `((".*" ,(concat (file-name-as-directory my/auto-save-dir) "\\1") t)))
   (auto-save-list-file-prefix
    (expand-file-name "auto-save-list/.saves-" my/cache-dir))
 
