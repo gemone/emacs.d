@@ -43,11 +43,16 @@
     (require 'elpaca)
     (elpaca-generate-autoloads "elpaca" repo)
     (let ((load-source-file-function nil)) (load "./elpaca-autoloads"))))
-;; Windows: build by copying instead of symbolic links. Must be enabled
-;; before the build queue is processed. elpaca-no-symlink-mode is an
-;; autoload, so calling it here auto-loads elpaca.
 (when (eq system-type 'windows-nt)
-  (elpaca-no-symlink-mode 1))
+  ;; Windows: build by copying instead of symbolic links. Must be enabled
+  ;; before the build queue is processed. elpaca-no-symlink-mode is an
+  ;; autoload, so calling it here auto-loads elpaca.
+  (elpaca-no-symlink-mode 1)
+  ;; Windows-specific file-open speedups:
+  ;; - file locks add a blocking round-trip on slow/network drives
+  ;; - full attribute lookups are comparatively expensive on NTFS
+  (setq create-lockfiles nil)
+  (setq w32-get-true-file-attributes nil))
 (add-hook 'after-init-hook #'elpaca-process-queues)
 (elpaca `(,@elpaca-order))
 
@@ -518,7 +523,10 @@
      magit-insert-unstaged-changes
      magit-insert-staged-changes
      ))
-  (vc-handled-backends '(Git)))
+  ;; VC checks on file visit are expensive on Windows (each backend probe
+  ;; spawns a process); skip them there.  magit talks to git directly, so
+  ;; it is unaffected.
+  (vc-handled-backends (if (eq system-type 'windows-nt) nil '(Git))))
 
 ;;; Project management
 (use-package projectile
@@ -567,15 +575,9 @@
   ;; `treesit-extra-load-path').  Falls back to the built-in installer if
   ;; `tree-sitter' is not on PATH.
   (when (fboundp 'treesit-install-language-grammar)
-    ;; cargo installs tree-sitter to ~/.cargo/bin; make sure Emacs finds it.
-    (let ((cargo-bin (expand-file-name "~/.cargo/bin")))
-      (when (file-directory-p cargo-bin)
-        (add-to-list 'exec-path cargo-bin)
-        (setenv "PATH"
-                (mapconcat #'identity
-                           (cons cargo-bin
-                                 (parse-colon-path (or (getenv "PATH") "")))
-                           ":"))))
+    ;; `tree-sitter' is resolved through the system PATH (cargo installs it
+    ;; to ~/.cargo/bin); make sure that directory is on the OS PATH and
+    ;; restart Emacs (or the daemon) so the new environment is inherited.
 
     (defun my/treesit-cli-run (&rest args)
       "Run ARGS as a subprocess; signal `treesit-error' on failure."
@@ -681,14 +683,11 @@ copies it to OUT-DIR (default the cache grammar dir)."
 ;;; Eglot (LSP client, built-in since Emacs 29)
 (use-package eglot
   :ensure nil
-  :init
-  ;; PATH for LSP servers under ~/.local/bin (rass/ty/ruff/ngserver).
-  ;; Subprocesses inherit PATH, not exec-path, so set both.
-  (let* ((bin (expand-file-name "~/.local/bin"))
-         (old (or (getenv "PATH") ""))
-         (new (mapconcat #'identity (cons bin (parse-colon-path old)) ":")))
-    (add-to-list 'exec-path bin)
-    (setenv "PATH" new))
+  ;; LSP servers (rass/ty/ruff/ngserver/jdtls) are resolved through the
+  ;; system PATH, which Emacs inherits at startup.  Make sure the install
+  ;; directory (~/.local/bin, i.e. %USERPROFILE%\.local\bin on Windows) is
+  ;; part of the OS PATH, then restart Emacs (or the daemon) so the new
+  ;; environment is picked up.
   :hook ((prog-mode . (lambda ()
                         (unless (eq major-mode 'emacs-lisp-mode)
                           (eglot-ensure)))))
