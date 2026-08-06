@@ -421,6 +421,26 @@ installed, return the first element of FAMILIES as a safe default."
   (sp-pair "《" "》")
   (sp-pair "（" "）"))
 
+;;; Indent guides & rainbow brackets
+(use-package indent-bars
+  :ensure t
+  :hook ((prog-mode . indent-bars-mode))
+  :custom
+  ;; Color the bars by nesting depth (catppuccin-ish palette; the
+  ;; option is a plist in current indent-bars, not a boolean)
+  (indent-bars-color-by-depth
+   '(:palette ("#f38ba8" "#fab387" "#f9e2af"
+               "#a6e3a1" "#89b4fa" "#cba6f7")
+     :blend 0.4))
+  (indent-bars-pattern ".")
+  (indent-bars-width-frac 0.1)
+  (indent-bars-priority 0))
+
+(use-package rainbow-delimiters
+  :ensure t
+  :hook ((prog-mode . rainbow-delimiters-mode)
+         (org-mode . rainbow-delimiters-mode)))
+
 ;;; Completion
 ;; MiniBuff
 (use-package vertico
@@ -663,15 +683,22 @@ installed, return the first element of FAMILIES as a safe default."
   :ensure t
   :defer t
   :config
+  ;; Collapse chains of single-child directories (a/b/c/... with only one
+  ;; subdirectory each) into one node, up to this many levels at once.
   ;; treemacs resets this at load time, so set it here to keep it applied.
-  (setq treemacs-collapse-dirs 1)
+  ;; Note: requires Python (used for the async collapse scan); raise the
+  ;; cap if you want deeper chains collapsed.
+  (setq treemacs-collapse-dirs 5)
   :bind (("C-c t" . treemacs)
          ("C-c T" . treemacs-select-window)))
 
 (use-package treemacs-projectile
   :ensure t
   :defer t
-  :after (treemacs projectile))
+  :after (treemacs projectile)
+  :config
+  ;; Visiting a file in a projectile project auto-shows it in treemacs.
+  (treemacs-project-follow-mode))
 
 ;; ts
 (use-package treesit-auto
