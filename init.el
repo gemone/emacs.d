@@ -748,12 +748,75 @@ copies it to OUT-DIR (default the cache grammar dir)."
             (message "tree-sitter: %s installed to %s" lang out-dir)
             nil))))
 
+    (defun my/treesit-install-async (lang)
+      "Install grammar LANG in a detached Emacs batch process.
+The subprocess reuses the CLI installer above, so the frontend is
+never blocked while the grammar is downloaded and built."
+      (let* ((emacs (expand-file-name invocation-name invocation-directory))
+             (buf (get-buffer-create (format "*treesit-install-%s*" lang)))
+             (target (current-buffer))
+             (body
+              (format
+               (concat
+                "(progn "
+                "(require 'treesit) "
+                "(defvar my/cache-dir %S) "
+                "(setq treesit-language-source-alist %S) "
+                "(setq treesit-extra-load-path %S) "
+                "(setf (symbol-function 'my/treesit-cli-run) %S) "
+                "(setf (symbol-function 'my/treesit-cli-grammar-dir) %S) "
+                "(setf (symbol-function 'my/treesit-cli-install-language-grammar) %S) "
+                "(let ((failed (if (executable-find \"tree-sitter\") "
+                "(my/treesit-cli-install-language-grammar %S nil) "
+                "(treesit-install-language-grammar %S nil)))) "
+                "(kill-emacs (if (or failed (not (treesit-language-available-p %S))) 1 0))))")
+               my/cache-dir
+               treesit-language-source-alist
+               treesit-extra-load-path
+               (symbol-function 'my/treesit-cli-run)
+               (symbol-function 'my/treesit-cli-grammar-dir)
+               (symbol-function 'my/treesit-cli-install-language-grammar)
+               lang lang lang)))
+        (with-current-buffer buf (erase-buffer))
+        (message "tree-sitter: installing %s grammar in background" lang)
+        (make-process
+         :name (format "treesit-install-%s" lang)
+         :noquery t
+         :buffer buf
+         :command (list emacs "-Q" "--batch" "--eval" body)
+         :sentinel
+         (lambda (proc _event)
+           (when (memq (process-status proc) '(exit signal))
+             (if (zerop (process-exit-status proc))
+                 (progn
+                   (message "tree-sitter: %s grammar installed" lang)
+                   ;; Re-enable the ts-mode in the buffer that triggered the
+                   ;; install, so no manual reopen is needed.
+                   (when (and (buffer-live-p target)
+                              (fboundp 'treesit-auto--get-mode-recipe)
+                              (fboundp 'treesit-auto--ready-p))
+                     (with-current-buffer target
+                       (when-let* ((recipe (treesit-auto--get-mode-recipe))
+                                   (ts-mode (treesit-auto-recipe-ts-mode recipe))
+                                   (grammar (treesit-auto-recipe-lang recipe))
+                                   ((eq grammar lang))
+                                   ((treesit-auto--ready-p ts-mode)))
+                         (funcall ts-mode)
+                         (message "tree-sitter: enabled %s" ts-mode)))))
+               (message
+                "tree-sitter: background install of %s failed; see *treesit-install-%s*"
+                lang lang)))))))
+
     (defun my/treesit-install-via-cli (orig-fun lang &optional out-dir)
-      "Install LANG with the CLI when available; fall back to ORIG-FUN."
-      (if (executable-find "tree-sitter")
-          (my/treesit-cli-install-language-grammar
-           lang (and (not (eq out-dir 'interactive)) out-dir))
-        (funcall orig-fun lang out-dir)))
+      "Install LANG in the background; fall back to ORIG-FUN when needed.
+Background install is skipped for explicit interactive calls
+(\`M-x treesit-install-language-grammar') or with a prefix arg."
+      (if (or (treesit-language-available-p lang)
+              (eq out-dir 'interactive)
+              current-prefix-arg)
+          (funcall orig-fun lang out-dir)
+        (my/treesit-install-async lang)
+        nil))
 
     (advice-add 'treesit-install-language-grammar
                 :around #'my/treesit-install-via-cli)))
