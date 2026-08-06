@@ -160,16 +160,7 @@
 
   (global-auto-revert-mode 1)
 
-  ;; Emacs 30 hard-codes the tree-sitter install dir under
-  ;; `user-emacs-directory'; redirect future installs into the cache too.
-  (when (fboundp 'treesit-install-language-grammar)
-    (defun my/treesit-install-to-cache (orig-fun lang &optional out-dir)
-      "Call ORIG-FUN, defaulting OUT-DIR to the cache grammar dir."
-      (funcall orig-fun lang
-               (or out-dir (expand-file-name "tree-sitter/" my/cache-dir))))
-    (advice-add 'treesit-install-language-grammar
-                :around #'my/treesit-install-to-cache)))
-
+)
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
 (load custom-file 'no-error 'no-message)
 
@@ -562,11 +553,116 @@
   :config
   (global-treesit-auto-mode)
   ;; Prompt to install missing grammars when visiting a file (uses the CLI
-  ;; install path above); set to t for silent auto-install.
+  ;; install path below); set to t for silent auto-install.
   (setq treesit-auto-install 'prompt)
   ;; zig is handled by zig-mode below; keep treesit-auto from installing the
   ;; zig grammar and remapping .zig/.zon to the built-in zig-ts-mode.
-  (setq treesit-auto-langs (delq 'zig treesit-auto-langs)))
+  (setq treesit-auto-langs (delq 'zig treesit-auto-langs))
+
+  ;; Install tree-sitter grammars via the `tree-sitter' CLI
+  ;; (tree-sitter-cli) instead of Emacs's built-in cc compilation:
+  ;; `tree-sitter generate --abi N' regenerates parser.c at the ABI
+  ;; version of this Emacs, and `tree-sitter build' handles scanners and
+  ;; linking.  Output goes straight into the cache directory (already on
+  ;; `treesit-extra-load-path').  Falls back to the built-in installer if
+  ;; `tree-sitter' is not on PATH.
+  (when (fboundp 'treesit-install-language-grammar)
+    ;; cargo installs tree-sitter to ~/.cargo/bin; make sure Emacs finds it.
+    (let ((cargo-bin (expand-file-name "~/.cargo/bin")))
+      (when (file-directory-p cargo-bin)
+        (add-to-list 'exec-path cargo-bin)
+        (setenv "PATH"
+                (mapconcat #'identity
+                           (cons cargo-bin
+                                 (parse-colon-path (or (getenv "PATH") "")))
+                           ":"))))
+
+    (defun my/treesit-cli-run (&rest args)
+      "Run ARGS as a subprocess; signal `treesit-error' on failure."
+      (with-temp-buffer
+        (unless (eq 0 (apply #'call-process (car args) nil t nil (cdr args)))
+          (signal 'treesit-error
+                  (list (string-join (cons (car args) (cdr args)) " ")
+                        (buffer-string))))))
+
+    (defun my/treesit-cli-grammar-dir (repo &optional source-dir)
+      "Locate the directory holding the grammar to build in REPO."
+      (let* ((default-directory repo)
+             (candidates (if source-dir (list source-dir ".") '(".")))
+             (dir (seq-find
+                   (lambda (d)
+                     (or (file-exists-p (expand-file-name "grammar.js" d))
+                         (file-exists-p (expand-file-name "grammar.json" d))))
+                   candidates)))
+        (expand-file-name (or dir (or source-dir "src")))))
+
+    (defun my/treesit-cli-install-language-grammar (lang &optional out-dir)
+      "Install grammar LANG using the `tree-sitter' CLI.
+Clones the recipe repo, regenerates parser.c at the ABI version of
+this Emacs, builds the shared library with `tree-sitter build' and
+copies it to OUT-DIR (default the cache grammar dir)."
+      (let* ((recipe (assoc lang treesit-language-source-alist))
+             (url (nth 1 recipe))
+             (revision (nth 2 recipe))
+             (source-dir (nth 3 recipe))
+             (workdir (make-temp-file "treesit-workdir" t))
+             (repo (expand-file-name "repo" workdir))
+             (out-dir (expand-file-name
+                       (or out-dir
+                           (expand-file-name "tree-sitter/" my/cache-dir))))
+             (abi (or (and (fboundp 'treesit-library-abi-version)
+                           (treesit-library-abi-version))
+                      14))
+             (lib-name (format "libtree-sitter-%s%s"
+                               lang (or (car dynamic-library-suffixes) ".so"))))
+        (unwind-protect
+            (progn
+              (unless url
+                (signal 'treesit-error
+                        (list "No recipe for" lang
+                              "in `treesit-language-source-alist'")))
+              (message "tree-sitter: cloning %s" url)
+              (if revision
+                  (my/treesit-cli-run "git" "clone" "--depth" "1" "--quiet"
+                                      "-b" revision url repo)
+                (my/treesit-cli-run "git" "clone" "--depth" "1" "--quiet"
+                                    url repo))
+              (let* ((grammar-dir (my/treesit-cli-grammar-dir repo source-dir))
+                     (default-directory grammar-dir))
+                (when (or (file-exists-p "grammar.js")
+                          (file-exists-p "grammar.json"))
+                  (message "tree-sitter: generating parser for %s (ABI %d)"
+                           lang abi)
+                  (my/treesit-cli-run "tree-sitter" "generate"
+                                      "--abi" (number-to-string abi)))
+                (unless (file-exists-p out-dir)
+                  (make-directory out-dir t))
+                (message "tree-sitter: building %s" lib-name)
+                (my/treesit-cli-run "tree-sitter" "build"
+                                    "-o" (expand-file-name lib-name out-dir))))
+          (ignore-errors (delete-directory workdir t)))
+        ;; Mirror the built-in behavior: verify the grammar loads after install.
+        (pcase-let ((`(,available . ,err)
+                     (treesit-language-available-p lang t)))
+          (if (not available)
+              (progn
+                (display-warning
+                 'treesit
+                 (format "tree-sitter CLI install failed for %s: %s"
+                         lang (mapconcat (lambda (x) (format "%s" x)) err " ")))
+                t)
+            (message "tree-sitter: %s installed to %s" lang out-dir)
+            nil))))
+
+    (defun my/treesit-install-via-cli (orig-fun lang &optional out-dir)
+      "Install LANG with the CLI when available; fall back to ORIG-FUN."
+      (if (executable-find "tree-sitter")
+          (my/treesit-cli-install-language-grammar
+           lang (and (not (eq out-dir 'interactive)) out-dir))
+        (funcall orig-fun lang out-dir)))
+
+    (advice-add 'treesit-install-language-grammar
+                :around #'my/treesit-install-via-cli)))
 
 ;;; --- Zig ---
 ;; zig-mode (NonGNU ELPA): provides font-lock highlighting, automatic
