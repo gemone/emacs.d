@@ -560,7 +560,27 @@
 (use-package treesit-auto
   :ensure t
   :config
-  (global-treesit-auto-mode))
+  (global-treesit-auto-mode)
+  ;; Prompt to install missing grammars when visiting a file (uses the CLI
+  ;; install path above); set to t for silent auto-install.
+  (setq treesit-auto-install 'prompt)
+  ;; zig is handled by zig-mode below; keep treesit-auto from installing the
+  ;; zig grammar and remapping .zig/.zon to the built-in zig-ts-mode.
+  (setq treesit-auto-langs (delq 'zig treesit-auto-langs)))
+
+;;; --- Zig ---
+;; zig-mode (NonGNU ELPA): provides font-lock highlighting, automatic
+;; indentation and imenu, and formats via `zig fmt' (requires the zig
+;; executable; see `zig-zig-bin').  Keybindings: C-c C-b build /
+;; C-c C-f format / C-c C-r run / C-c C-t test.
+;; Eglot's built-in zig-mode -> zls defaults work; installing zls enables
+;; LSP automatically.
+(use-package zig-mode
+  :ensure t
+  :mode "\\.\\(zig\\|zon\\)\\'"
+  :custom
+  (zig-indent-offset 4)
+  (zig-format-on-save t))
 
 ;;; Eglot (LSP client, built-in since Emacs 29)
 (use-package eglot
