@@ -183,35 +183,54 @@
   :ensure t
   :demand t
   :config
-  ;; Maple Mono ships as SEPARATE families: NF has Nerd Font icons (PUA),
-  ;; CN has CJK glyphs -- no NF-CN combo exists. Primary font = NF so
-  ;; mode-line/completion icons render natively; CJK is wired via fontset to
-  ;; the CN family below. Fallback list tried in order when not installed;
-  ;; its car MUST match the family set via the fontaine presets below.
-  (setq face-font-family-alternatives
-        '(("Maple Mono NF"
-           "CaskaydiaCove Nerd Font Mono"
-           "Cascadia Code"
-           "JetBrains Mono Nerd Font Mono"
-           "Iosevka Nerd Font Mono"
-           "DejaVu Sans Mono"
-           "Monospace")))
-  ;; CJK: Maple Mono CN first (shares latin metrics with NF, keeps columns
-  ;; aligned). font-spec + explicit "fontset-default" is reliable on pgtk;
-  ;; NAME=t with a bare family string often silently fails there.
-  ;; ponytail: 'han only; add 'kana/'cjk-misc if JP/KR glyphs are needed.
-  (dolist (f '("Maple Mono CN" "LXGW WenKai" "Sarasa Mono SC" "WenQuanYi Micro Hei Mono"))
-    (set-fontset-font "fontset-default" 'han (font-spec :family f) nil 'append))
-  (setq fontaine-presets
-        '((regular :default-height 130)
-          (large   :default-height 160)
-          (t       :default-family "Maple Mono NF"
-                   :default-weight regular
-                   :fixed-pitch-family "Maple Mono NF"
-                   :variable-pitch-family "Maple Mono NF"
-                   :bold-weight semibold
-                   :italic-slant italic
-                   :line-spacing nil)))
+  ;; Probe installed fonts at startup and pick the first available family
+  ;; from each chain, so the config works on machines with only some of the
+  ;; fonts installed.  Maple Mono ships as SEPARATE families: NF has Nerd
+  ;; Font icons (PUA), CN has CJK glyphs; some builds also provide a
+  ;; combined "NF CN".  Prefer the combined family when present, then NF
+  ;; (icons for mode-line/completion), then CN / generic CJK-capable
+  ;; fallbacks.  The chosen latin family is used for the fontaine presets,
+  ;; and `face-font-family-alternatives' keeps the whole chain as backup.
+  (defun my/font-available-p (family)
+    "Return non-nil if FAMILY is installed on the current display."
+    (and (display-graphic-p)
+         (member family (font-family-list))))
+
+  (defun my/select-font (families)
+    "Return the first installed font in FAMILIES.
+If no font can be probed (e.g. daemon/terminal at load time) or none is
+installed, return the first element of FAMILIES as a safe default."
+    (catch 'found
+      (dolist (family families)
+        (when (my/font-available-p family)
+          (throw 'found family)))
+      (car families)))
+
+  (let* ((latin-chain '("Maple Mono NF CN" "Maple Mono NF" "Maple Mono CN"
+                        "CaskaydiaCove Nerd Font Mono" "Cascadia Code"
+                        "JetBrains Mono Nerd Font Mono" "Iosevka Nerd Font Mono"
+                        "DejaVu Sans Mono" "Monospace"))
+         (cjk-chain '("Maple Mono NF CN" "Maple Mono CN" "LXGW WenKai"
+                      "Sarasa Mono SC" "WenQuanYi Micro Hei Mono"))
+         (main-font (my/select-font latin-chain))
+         (cjk-font  (my/select-font cjk-chain)))
+    (setq face-font-family-alternatives (list latin-chain))
+    ;; CJK primary + remaining installed candidates as glyph-level fallback.
+    ;; font-spec + explicit "fontset-default" is reliable on pgtk; NAME=t
+    ;; with a bare family string often silently fails there.
+    (set-fontset-font "fontset-default" 'han (font-spec :family cjk-font))
+    (dolist (family (cdr (member cjk-font cjk-chain)))
+      (set-fontset-font "fontset-default" 'han (font-spec :family family) nil 'append))
+    (setq fontaine-presets
+          `((regular :default-height 130)
+            (large   :default-height 160)
+            (t       :default-family ,main-font
+                     :default-weight regular
+                     :fixed-pitch-family ,main-font
+                     :variable-pitch-family ,main-font
+                     :bold-weight semibold
+                     :italic-slant italic
+                     :line-spacing nil))))
   ;; fontaine-mode only persists the last preset across restarts; it does
   ;; NOT apply fonts. fontaine-set-preset is what actually sets faces.
   (fontaine-mode 1)
