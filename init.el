@@ -402,6 +402,25 @@ installed, return the first element of FAMILIES as a safe default."
    '("'" . repeat)
    '("<escape>" . ignore)))
 
+;;; Smart parens
+;; Auto-matching delimiters plus structured editing (wrap, slurp, barf).
+;; Paired delimiters are inserted together as you type; the matching pair
+;; highlight comes from `show-paren-mode' (already enabled above).
+;; Keybindings live in `sp-keymap' (C-M-f/b/u/d, M-(, C-<left>/<right>...)
+;; and can be trimmed if any collide with meow.
+(use-package smartparens
+  :ensure t
+  :demand t
+  :config
+  (require 'smartparens-config)
+  (smartparens-global-mode 1)
+  ;; Extra CJK delimiter pairs for Chinese text editing.
+  (sp-pair "「" "」")
+  (sp-pair "『" "』")
+  (sp-pair "【" "】")
+  (sp-pair "《" "》")
+  (sp-pair "（" "）"))
+
 ;;; Completion
 ;; MiniBuff
 (use-package vertico
