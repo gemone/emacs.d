@@ -445,9 +445,49 @@ installed, return the first element of FAMILIES as a safe default."
   ;; (orderless-style-dispatchers '(+orderless-consult-dispatch orderless-affix-dispatch))
   ;; (orderless-component-separator #'orderless-escapable-split-on-space)
   (completion-styles '(orderless basic))
-  (completion-category-overrides '((file (styles partial-completion))))
+  ;; LSP candidates (eglot) are already prefix-filtered by the server, so
+  ;; use `basic' matching for them; orderless would otherwise re-filter and
+  ;; hide valid candidates.
+  (completion-category-overrides '((eglot-capf (styles basic))
+                                   (file (styles partial-completion))))
   (completion-category-defaults nil) ;; Disable defaults, use our settings
   (completion-pcm-leading-wildcard t))
+
+(defun my/consult-find ()
+  "Fuzzy-find files with `fd' when available, else fall back to `find'."
+  (interactive)
+  (call-interactively (if (executable-find "fd") #'consult-fd #'consult-find)))
+
+(use-package consult
+  :ensure t
+  :bind (("C-c f" . my/consult-find)
+         ("C-c F" . consult-ripgrep))
+  :config
+  ;; Use projectile roots instead of the built-in project.el.
+  ;; (`consult-project-function' takes MAY-PROMPT; ignore it.)
+  (setq consult-project-function
+        (lambda (&rest _) (projectile-project-root))))
+
+(use-package zoxide
+  :ensure t)
+
+(use-package consult-dir
+  :ensure t
+  :bind (("C-c d" . consult-dir)
+         :map minibuffer-local-completion-map
+         ("C-x C-j" . consult-dir-jump-file))
+  :config
+  ;; zoxide history as a consult-dir source; narrow with `z'.
+  (defvar consult-dir-source-zoxide
+    `(:name "Zoxide"
+            :narrow ?z
+            :category file
+            :face consult-file
+            :history file-name-history
+            :enabled ,(lambda () (featurep 'zoxide))
+            :items ,#'zoxide-query)
+    "Zoxide directory source for `consult-dir'.")
+  (add-to-list 'consult-dir-sources 'consult-dir-source-zoxide t))
 
 ;; For Code
 (use-package corfu
@@ -455,10 +495,13 @@ installed, return the first element of FAMILIES as a safe default."
   :custom
   (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
   (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
-  (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+  (corfu-quit-no-match t)        ;; Quit (hide popup) when there is no match
   (corfu-preview-current nil)    ;; Disable current candidate preview
   (corfu-preselect 'prompt)      ;; Preselect the prompt
   (corfu-on-exact-match 'insert) ;; Configure handling of exact matches
+  (corfu-auto t)                 ;; Popup while typing (idle-based)
+  (corfu-auto-delay 0.2)         ;; Idle delay before showing candidates
+  (corfu-auto-prefix 2)          ;; Minimum prefix length for auto popup
 
   ;; Enable Corfu only for certain modes. See also `global-corfu-modes'.
   ;; :hook ((prog-mode . corfu-mode)
@@ -476,6 +519,21 @@ installed, return the first element of FAMILIES as a safe default."
   (corfu-history-mode)
   (corfu-mouse-mode)
   (corfu-popupinfo-mode))
+
+;; Extra completion sources layered on top of LSP (eglot):
+;; - eglot registers its capf buffer-locally, so it is tried FIRST and
+;;   provides server completions for identifiers;
+;; - when eglot returns nil (comments, strings, no server, non-LSP modes)
+;;   these global sources fill in: file names, words in the buffer,
+;;   dictionary words, and elisp code blocks.
+(use-package cape
+  :ensure t
+  :after corfu
+  :config
+  (add-to-list 'completion-at-point-functions #'cape-file)
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+  (add-to-list 'completion-at-point-functions #'cape-dict)
+  (add-to-list 'completion-at-point-functions #'cape-elisp-block))
 
 
 ;;; IBuffer & isearch
@@ -574,10 +632,6 @@ installed, return the first element of FAMILIES as a safe default."
   :custom
   (projectile-switch-project-action #'projectile-find-file)
   (projectile-completion-system 'default))
-
-(use-package fzf
-  :ensure t
-  :bind (("C-c f" . fzf)))
 
 (use-package treemacs
   :ensure t
