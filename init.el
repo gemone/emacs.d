@@ -442,7 +442,9 @@ installed, return the first element of FAMILIES as a safe default."
   :ensure t
   :custom
   ;; Configure a custom style dispatcher (see the Consult wiki)
-  ;; (orderless-style-dispatchers '(+orderless-consult-dispatch orderless-affix-dispatch))
+  ;; Note: `+orderless-consult-dispatch' was removed in current Consult;
+  ;; only `orderless-affix-dispatch' exists (`!' exclude, `=' literal).
+  (orderless-style-dispatchers '(orderless-affix-dispatch))
   ;; (orderless-component-separator #'orderless-escapable-split-on-space)
   (completion-styles '(orderless basic))
   ;; LSP candidates (eglot) are already prefix-filtered by the server, so
@@ -461,7 +463,8 @@ installed, return the first element of FAMILIES as a safe default."
 (use-package consult
   :ensure t
   :bind (("C-c f" . my/consult-find)
-         ("C-c F" . consult-ripgrep))
+         ("C-c F" . consult-ripgrep)
+         ("C-s" . consult-line))
   :config
   ;; Use projectile roots instead of the built-in project.el.
   ;; (`consult-project-function' takes MAY-PROMPT; ignore it.)
@@ -555,6 +558,28 @@ installed, return the first element of FAMILIES as a safe default."
   :custom
   (ibuffer-default-sorting-mode 'recency)
   (ibuffer-show-empty-filter-groups nil))
+
+;;; Isearch
+;; Built-in isearch tuning: match counter, immediate multi-match
+;; highlighting, and scroll/wrap ergonomics.
+(use-package isearch
+  :ensure nil
+  :custom
+  ;; Show "N/total" while searching
+  (isearch-lazy-count t)
+  ;; Highlight all matches immediately (no idle delay)
+  (lazy-highlight-initial-delay 0)
+  ;; Allow C-v/M-v and other motion commands during isearch
+  (isearch-allow-scroll t)
+  ;; Wrap to the other end without pausing
+  (isearch-wrap-pause 'no)
+  ;; Reversing direction keeps the current search string
+  (isearch-repeat-on-direction-change t)
+  ;; Whitespace in the pattern matches any run of whitespace
+  (search-whitespace-regexp "\\s-+")
+  :config
+  ;; C-o lists all matches in an Occur buffer
+  (define-key isearch-mode-map (kbd "C-o") #'isearch-occur))
 
 ;;; Coding
 ;; Relative line numbers in prog-mode, with a big-file fallback to
