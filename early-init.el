@@ -1,6 +1,15 @@
 ;;; early-init.el --- pre-load setup -*- lexical-binding: t; -*-
 (setq package-enable-at-startup nil)
 
+;; Never byte-compile the user init files: with Elpaca, compiling init.el
+;; bakes in elpaca internals from the compile session, and a stale
+;; init.elc breaks startup (e.g. "elpaca--expand-declaration is void").
+;; Remove any leftovers so Emacs always loads the source files.
+(dolist (elc (list (expand-file-name "init.elc" user-emacs-directory)
+                   (expand-file-name "early-init.elc" user-emacs-directory)))
+  (when (file-exists-p elc)
+    (delete-file elc)))
+
 ;; CODEC -- utf-8
 (prefer-coding-system 'utf-8)
 (set-default-coding-systems 'utf-8)
