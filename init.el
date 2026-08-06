@@ -476,7 +476,8 @@ installed, return the first element of FAMILIES as a safe default."
 
 (use-package consult-dir
   :ensure t
-  :bind (("C-c d" . consult-dir)
+  ;; Note: C-c d is taken by dape's key prefix, so use C-c z (zoxide).
+  :bind (("C-c z" . consult-dir)
          :map minibuffer-local-completion-map
          ("C-x C-j" . consult-dir-jump-file))
   :config
