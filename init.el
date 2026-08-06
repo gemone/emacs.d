@@ -272,7 +272,7 @@
    '("C-M-w" . kill-region))
   (setq meow--kbd-kill-region "C-M-w")
 
-  ;; Vim-style paging in NORMAL state (vim 翻页):
+  ;; Vim-style paging in NORMAL state:
   ;;   C-f / C-b : full page down / up
   ;;   C-d / C-u : half  page down / up
   ;;
@@ -595,23 +595,25 @@
                ("g i" . xref-find-implementations)
                ("g r" . xref-find-references))))
 
-;;; --- Eglot: 语言特定配置 ---
-;; 下面用到 `eglot-alternatives' 等函数，所以放在 eglot 加载后再执行。
+;;; --- Eglot: language-specific config ---
+;; The functions below (e.g. `eglot-alternatives') only exist after eglot
+;; is loaded, so this runs afterwards.
 
-;; Python: ty（类型检查）+ ruff（lint/格式化）
-;; Eglot 每个 buffer 只能连一个 LSP server，所以用 rassumfrassum (rass)
-;; 把两个 server 合并成一条 stdio 连接：`rass python' 等价于
-;; `rass -- ty server -- ruff server'。
-;; 安装：uv tool install rassumfrassum ty ruff（可执行文件在 ~/.local/bin）
-;; ty/ruff 各自的配置写在项目的 pyproject.toml（[tool.ty] / [tool.ruff]）。
+;; Python: ty (type checking) + ruff (lint/format)
+;; Eglot can only connect one LSP server per buffer, so rassumfrassum (rass)
+;; merges the two servers into one stdio connection: `rass python' is
+;; equivalent to `rass -- ty server -- ruff server'.
+;; Install: uv tool install rassumfrassum ty ruff (binaries in ~/.local/bin)
+;; ty/ruff options live in the project's pyproject.toml ([tool.ty] /
+;; [tool.ruff]).
 (with-eval-after-load 'eglot
   (add-to-list 'eglot-server-programs
                `((python-mode python-ts-mode)
                  .
                  ,(eglot-alternatives
-                   '(("rass" "python")            ; ty + ruff（推荐）
-                     ("ty" "server")              ; 仅 ty
-                     ("ruff" "server")            ; 仅 ruff
+                   '(("rass" "python")            ; ty + ruff (recommended)
+                     ("ty" "server")              ; ty only
+                     ("ruff" "server")            ; ruff only
                      ("basedpyright-langserver" "--stdio"))))))
 
 ;;; --- Java: full development environment (jdtls + eglot-java + dape + java-server) ---
@@ -834,19 +836,20 @@ vscode-css-language-server via `rass'; others use the default HTML server."
                     (web-mode :language-id "html"))
                    . my/angular-web-contact))))
 
-;;; Elisp 语法/静态检查（Emacs Lisp 没有 LSP server）
+;;; Elisp linting/static checks (Emacs Lisp has no LSP server)
 (use-package elisp-mode
   :ensure nil
   :hook ((emacs-lisp-mode . flymake-mode)
-         ;; 配置类文件只保留 checkdoc 后端：byte-compile 子进程的 load-path
-         ;; 只有 "./"，看不到 Elpaca 安装的包，会产生大量"函数未定义"噪音。
+         ;; Keep only the checkdoc backend for config files: the byte-compile
+         ;; subprocess load-path only contains "./", so it cannot see Elpaca
+         ;; packages and produces a lot of "function not defined" noise.
          (emacs-lisp-mode . (lambda ()
                               (remove-hook 'flymake-diagnostic-functions
                                            #'elisp-flymake-byte-compile t))))
   :config
-  ;; Emacs 30 的 `emacs-lisp-mode' 默认注册两个 flymake 后端：
-  ;; `elisp-flymake-byte-compile'（编译错误，已在上方移除）和
-  ;; `elisp-flymake-checkdoc'（文档/风格，保留）
+  ;; Emacs 30's `emacs-lisp-mode' registers two flymake backends by default:
+  ;; `elisp-flymake-byte-compile' (compile errors; removed above) and
+  ;; `elisp-flymake-checkdoc' (doc/style; kept).
   (setq-default checkdoc-package-keywords-flag nil))
 
 ;;; --- Markdown: code block editing ---
@@ -879,7 +882,7 @@ vscode-css-language-server via `rass'; others use the default HTML server."
   :ensure (:host github :repo "dgillis/emacs-codex-ide")
   :bind (("C-c C-a" . codex-ide-menu))
   :config
-  ;; IDE 面板/会话 buffer 不显示行号
+  ;; No line numbers in IDE panels/session buffers
   (add-hook 'codex-ide-session-mode-hook #'my/disable-line-numbers)
   (add-hook 'codex-ide-loop-mode-hook #'my/disable-line-numbers)
   (add-hook 'codex-ide-section-mode-hook #'my/disable-line-numbers)
