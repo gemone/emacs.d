@@ -266,7 +266,9 @@ installed, return the first element of FAMILIES as a safe default."
 	("g" . beginning-of-buffer)
 	("a" . back-to-indentation)
 	("l" . end-of-line)
-	("e" . end-of-buffer))
+	("e" . end-of-buffer)
+	("n" . flymake-goto-next-error)
+	("p" . flymake-goto-prev-error))
   (:map meow-normal-state-keymap
         :prefix "C-w"
         :prefix-map my/meow-window-map
@@ -321,6 +323,17 @@ installed, return the first element of FAMILIES as a safe default."
    '("j" . meow-next)
    '("k" . meow-prev)
    '("<escape>" . ignore))
+
+  (defun my/meow-toggle-diagnostics ()
+    "Toggle the Flymake diagnostics list for the current buffer."
+    (interactive)
+    (unless flymake-mode
+      (user-error "Flymake mode is not enabled in the current buffer"))
+    (let ((name (flymake--diagnostics-buffer-name)))
+      (if-let ((win (get-buffer-window name)))
+          (quit-window nil win)
+        (flymake-show-buffer-diagnostics))))
+
   (meow-leader-define-key
    ;; Use SPC (0-9) for digit arguments.
    '("1" . meow-digit-argument)
@@ -333,6 +346,7 @@ installed, return the first element of FAMILIES as a safe default."
    '("8" . meow-digit-argument)
    '("9" . meow-digit-argument)
    '("0" . meow-digit-argument)
+   '("d" . my/meow-toggle-diagnostics)
    '("/" . meow-keypad-describe-key)
    '("?" . meow-cheatsheet))
   (meow-normal-define-key
