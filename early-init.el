@@ -1,4 +1,12 @@
 ;;; early-init.el --- pre-load setup -*- lexical-binding: t; -*-
+
+;;; Commentary:
+;; Settings applied before the main init file loads: package bootstrap is
+;; deferred to `init.el', stale byte-compiled config files are removed, and
+;; UTF-8 is configured as the default coding system.
+
+;;; Code:
+
 (setq package-enable-at-startup nil)
 
 ;; Never byte-compile the user init files: with Elpaca, compiling init.el
@@ -42,3 +50,6 @@
 (when (eq system-type 'windows-nt)
   (setenv "PYTHONIOENCODING" "utf-8")
   (add-to-list 'process-coding-system-alist '("python" . utf-8)))
+
+(provide 'early-init)
+;;; early-init.el ends here
