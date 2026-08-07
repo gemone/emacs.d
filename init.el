@@ -387,7 +387,7 @@ installed, return the first element of FAMILIES as a safe default."
    '("j" . meow-next)
    '("J" . meow-next-expand)
    '("k" . meow-prev)
-   '("K" . meow-prev-expand)
+   '("K" . my/meow-eldoc-help-at-point)
    '("l" . meow-right)
    '("L" . meow-right-expand)
    '("m" . meow-join)
@@ -931,6 +931,44 @@ Background install is skipped for explicit interactive calls
                ("g d" . xref-find-definitions)
                ("g i" . xref-find-implementations)
                ("g r" . xref-find-references))))
+
+;;; Eldoc documentation in a childframe (eglot hover docs)
+(use-package eldoc-box
+  :ensure t
+  :demand t
+  :preface
+  ;; Two problems with the stock `K' flow:
+  ;; - pressing `K' again while the childframe is visible moves input focus
+  ;;   into the childframe; quitting from inside it can leave the main
+  ;;   frame without input focus (the cursor disappears).
+  ;; - in the doc buffer `meow-global-mode' shadows the `q' that eldoc-box
+  ;;   binds to leave.
+  ;; Fix: bind `K' to a toggle that never focuses the childframe (second
+  ;; `K' just hides it), and keep `q'/`C-g' escapes in the doc buffer for
+  ;; stray clicks that do land inside the frame.
+  (defun my/meow-eldoc-help-at-point ()
+    "Show the eldoc doc childframe, or hide it if already visible.
+Unlike `eldoc-box-help-at-point', this never moves input focus into the
+childframe, so hiding it always returns to the source buffer."
+    (interactive)
+    (if (eldoc-box--frame-visible-p)
+        (eldoc-box-quit-frame)
+      (eldoc-box-help-at-point)))
+  (defun my/eldoc-box-doc-buffer-setup (_orig)
+    "Disable meow in the doc childframe and bind `q'/`C-g' to quit it."
+    (meow-mode -1)
+    (local-set-key (kbd "q") #'eldoc-box-quit-frame)
+    (local-set-key (kbd "C-g") #'eldoc-box-quit-frame))
+  :hook (eglot-managed-mode . eldoc-box-hover-mode)
+        ;; eldoc-box is not loaded yet, so `use-package' would append
+        ;; "-hook" to an unbound symbol; write the hook without the suffix
+        ;; to land on `eldoc-box-buffer-setup-hook'.
+        (eldoc-box-buffer-setup . my/eldoc-box-doc-buffer-setup)
+  :custom
+  (eldoc-box-max-pixel-width 700)
+  (eldoc-box-max-pixel-height 400)
+  (eldoc-box-only-multi-line t)
+  (eldoc-box-clear-with-C-g t))
 
 ;;; --- Eglot: language-specific config ---
 ;; The functions below (e.g. `eglot-alternatives') only exist after eglot
