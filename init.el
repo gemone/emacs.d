@@ -269,7 +269,6 @@ face settings and have no need for fontaine."
   ;; width table already matches; no need to add custom entry.
   (setq valign-fancy-bar nil))
 
-
 ;;; Meow Editor
 (use-package meow
   :ensure t
@@ -643,10 +642,6 @@ face settings and have no need for fontaine."
 ;; absolute numbers (relative numbering re-renders on every cursor move).
 (use-package prog-mode
   :ensure nil
-  :preface
-  (defun my/disable-line-numbers ()
-    "Turn off display line numbers in the current buffer."
-    (display-line-numbers-mode -1))
   :bind (:map prog-mode-map
          ("C-c l" . my/cycle-line-numbers))
   :hook (prog-mode . my/prog-mode-line-numbers-setup)
@@ -682,6 +677,7 @@ face settings and have no need for fontaine."
   :custom
   ;; Transient (magit) history is persistent state
   (transient-history-file (expand-file-name "transient/history.el" my/state-dir)))
+
 ;; git version
 ;; magit-auto-revert-mode is on by default, and magit auto-detects the git
 ;; executable itself, so no :hook/:init magic is needed here.
@@ -1284,27 +1280,11 @@ vscode-css-language-server via `rass'; others use the default HTML server."
   :ensure t
   :after markdown-mode)
 
-;; LLM coding agents in Emacs. Independent, pick one per task.
-;; Requires `codex` and `pi` CLIs on PATH.
-
-;; Codex: native client for `codex app-server`. Open via M-x codex-ide-menu.
-(use-package codex-ide
-  :ensure (:host github :repo "dgillis/emacs-codex-ide")
-  :bind (("C-c C-a" . codex-ide-menu))
-  :config
-  ;; No line numbers in IDE panels/session buffers
-  (add-hook 'codex-ide-session-mode-hook #'my/disable-line-numbers)
-  (add-hook 'codex-ide-loop-mode-hook #'my/disable-line-numbers)
-  (add-hook 'codex-ide-section-mode-hook #'my/disable-line-numbers)
-  (add-hook 'codex-ide-log-mode-hook #'my/disable-line-numbers)
-  (add-hook 'codex-ide-session-buffer-list-mode-hook #'my/disable-line-numbers))
-
-;; Pi: frontend for the `pi` CLI. Open via M-x pi-coding-agent.
-(use-package pi-coding-agent
-  :ensure t
-  :config
-  (add-hook 'pi-coding-agent-chat-mode-hook #'my/disable-line-numbers)
-  (add-hook 'pi-coding-agent-input-mode-hook #'my/disable-line-numbers))
+;; LLM coding agent frontend: a comint shell over ACP (Agent Client
+;; Protocol). Supports Claude Code, Codex, Gemini CLI, Pi, Goose, etc.
+;; Open via M-x agent-shell (C-u for a new shell).
+(use-package agent-shell
+  :ensure t)
 
 ;; Ghostel: fast terminal emulator using libghostty-vt.
 ;; Requires dynamic module support (module-file-suffix non-nil).

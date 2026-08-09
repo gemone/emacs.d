@@ -36,15 +36,8 @@ git config --global gc.auto 256
 
 ## LLM 编程 agent
 
-Emacs 内两个独立 agent 前端，按任务选其一：
-
-- **codex** — [`emacs-codex-ide`](https://github.com/dgillis/emacs-codex-ide)，原生 Codex 客户端（`codex app-server`）。启动 `M-x codex-ide-menu`
-- **pi** — [`pi-coding-agent`](https://github.com/dnouri/pi-coding-agent)，Pi CLI 的 Emacs 前端。启动 `M-x pi-coding-agent`
-
-使用前需登录各自 CLI（凭证独立）：
-
-- **codex**：终端 `codex` 完成登录，见 [codex 文档](https://code.claude.com/docs/en/overview)
-- **pi**：终端 `pi` 完成 provider/API key 配置，凭证存 `~/.pi/agent/`，见 [pi 文档](https://github.com/dnouri/pi-coding-agent#install-pi-and-authenticate-)
+使用 [`agent-shell`](https://github.com/xenodium/agent-shell) 作为 Emacs 内统一的
+agent.
 
 ## Eglot / LSP 支持
 
