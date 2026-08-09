@@ -924,6 +924,18 @@ Background install is skipped for explicit interactive calls
   (zig-indent-offset 4)
   (zig-format-on-save t))
 
+;;; --- Common Lisp (SLIME) ---
+;; SLIME (Superior Lisp Interaction Mode for Emacs) is the standard Common
+;; Lisp development environment: REPL, inspector, debugger and
+;; cross-referencing over a SWANK connection to SBCL.  Start with `M-x
+;; slime', or open a .lisp file and press C-c C-z for the REPL.
+(use-package slime
+  :ensure t
+  :mode ("\\.lisp\\'" . common-lisp-mode)
+  :init
+  (setq inferior-lisp-program "sbcl")
+  (setq slime-contribs '(slime-fancy)))
+
 ;;; Eglot (LSP client, built-in since Emacs 29)
 (use-package eglot
   :ensure nil
@@ -933,7 +945,8 @@ Background install is skipped for explicit interactive calls
   ;; part of the OS PATH, then restart Emacs (or the daemon) so the new
   ;; environment is picked up.
   :hook ((prog-mode . (lambda ()
-                        (unless (eq major-mode 'emacs-lisp-mode)
+                        (unless (memq major-mode '(emacs-lisp-mode
+                                                  common-lisp-mode))
                           (eglot-ensure)))))
   :custom
   (eglot-autoshutdown t)
