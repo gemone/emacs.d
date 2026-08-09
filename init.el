@@ -179,9 +179,13 @@
   (catppuccin-reload))
 
 ;;; font config
+;; Load via :ensure + :demand only when a GUI is available (normal startup)
+;; or when running as a daemon, which may get a graphical client frame later.
+;; Plain terminal sessions never load fontaine at all.
 (use-package fontaine
   :ensure t
   :demand t
+  :if (or (display-graphic-p) (daemonp))
   :config
   ;; Probe installed fonts at startup and pick the first available family
   ;; from each chain, so the config works on machines with only some of the
@@ -193,8 +197,7 @@
   ;; and `face-font-family-alternatives' keeps the whole chain as backup.
   (defun my/font-available-p (family)
     "Return non-nil if FAMILY is installed on the current display."
-    (and (display-graphic-p)
-         (member family (font-family-list))))
+    (member family (font-family-list)))
 
   (defun my/select-font (families)
     "Return the first installed font in FAMILIES.
@@ -206,35 +209,54 @@ installed, return the first element of FAMILIES as a safe default."
           (throw 'found family)))
       (car families)))
 
-  (let* ((latin-chain '("Maple Mono NF CN" "Maple Mono NF" "Maple Mono CN"
-                        "CaskaydiaCove Nerd Font Mono" "Cascadia Code"
-                        "JetBrains Mono Nerd Font Mono" "Iosevka Nerd Font Mono"
-                        "DejaVu Sans Mono" "Monospace"))
-         (cjk-chain '("Maple Mono NF CN" "Maple Mono CN" "LXGW WenKai"
-                      "Sarasa Mono SC" "WenQuanYi Micro Hei Mono"))
-         (main-font (my/select-font latin-chain))
-         (cjk-font  (my/select-font cjk-chain)))
-    (setq face-font-family-alternatives (list latin-chain))
-    ;; CJK primary + remaining installed candidates as glyph-level fallback.
-    ;; font-spec + explicit "fontset-default" is reliable on pgtk; NAME=t
-    ;; with a bare family string often silently fails there.
-    (set-fontset-font "fontset-default" 'han (font-spec :family cjk-font))
-    (dolist (family (cdr (member cjk-font cjk-chain)))
-      (set-fontset-font "fontset-default" 'han (font-spec :family family) nil 'append))
-    (setq fontaine-presets
-          `((regular :default-height 130)
-            (large   :default-height 160)
-            (t       :default-family ,main-font
-                     :default-weight regular
-                     :fixed-pitch-family ,main-font
-                     :variable-pitch-family ,main-font
-                     :bold-weight semibold
-                     :italic-slant italic
-                     :line-spacing nil))))
-  ;; fontaine-mode only persists the last preset across restarts; it does
-  ;; NOT apply fonts. fontaine-set-preset is what actually sets faces.
-  (fontaine-mode 1)
-  (fontaine-set-preset 'regular))
+  ;; Font probing and fontsets need a real graphical frame, so all the
+  ;; fontaine setup is collected here and only run when a GUI is present.
+  (defun my/fontaine-apply ()
+    "Probe fonts, define presets, and apply the regular preset.
+Only meaningful on a graphical display; terminal frames use their own
+face settings and have no need for fontaine."
+    (let* ((latin-chain '("Maple Mono NF CN" "Maple Mono NF" "Maple Mono CN"
+                          "CaskaydiaCove Nerd Font Mono" "Cascadia Code"
+                          "JetBrains Mono Nerd Font Mono" "Iosevka Nerd Font Mono"
+                          "DejaVu Sans Mono" "Monospace"))
+           (cjk-chain '("Maple Mono NF CN" "Maple Mono CN" "LXGW WenKai"
+                        "Sarasa Mono SC" "WenQuanYi Micro Hei Mono"))
+           (main-font (my/select-font latin-chain))
+           (cjk-font  (my/select-font cjk-chain)))
+      (setq face-font-family-alternatives (list latin-chain))
+      ;; CJK primary + remaining installed candidates as glyph-level fallback.
+      ;; font-spec + explicit "fontset-default" is reliable on pgtk; NAME=t
+      ;; with a bare family string often silently fails there.
+      (set-fontset-font "fontset-default" 'han (font-spec :family cjk-font))
+      (dolist (family (cdr (member cjk-font cjk-chain)))
+        (set-fontset-font "fontset-default" 'han (font-spec :family family) nil 'append))
+      (setq fontaine-presets
+            `((regular :default-height 130)
+              (large   :default-height 160)
+              (t       :default-family ,main-font
+                       :default-weight regular
+                       :fixed-pitch-family ,main-font
+                       :variable-pitch-family ,main-font
+                       :bold-weight semibold
+                       :italic-slant italic
+                       :line-spacing nil))))
+    ;; fontaine-mode only persists the last preset across restarts; it does
+    ;; NOT apply fonts. fontaine-set-preset is what actually sets faces.
+    (fontaine-mode 1)
+    (fontaine-set-preset 'regular))
+
+  (when (display-graphic-p)
+    (my/fontaine-apply)))
+
+;; Daemon start has no frame yet, so fontaine cannot run at init time.
+;; Apply it once the first graphical client frame appears (emacsclient -c);
+;; the new frame is selected before this hook runs.  Terminal client frames
+;; (emacsclient -t) are skipped by the display-graphic-p check.
+(when (daemonp)
+  (add-hook 'server-after-make-frame-hook
+            (lambda ()
+              (when (display-graphic-p)
+                (my/fontaine-apply)))))
 
 ;; Pixel-perfect vertical alignment for variable-pitch/CJK columns.
 (use-package valign
