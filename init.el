@@ -166,6 +166,15 @@
   (global-auto-revert-mode 1)
 
 )
+;; Opt-in prog-mode languages. A language's `use-package' form is gated by
+;; `:if (memq 'SYM my/install-prog-modes)'; default nil installs none.
+;; Populate in custom.el (see custom-example.el).
+(defvar my/install-prog-modes nil
+  "List of language symbols whose packages elpaca should install.
+A `prog-mode' language declared with `:if (memq SYM
+my/install-prog-modes)' is only built/loaded when SYM is a member.
+nil means install none.  Example: (setq my/install-prog-modes '(zig)).")
+
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
 (load custom-file 'no-error 'no-message)
 
@@ -597,6 +606,7 @@ face settings and have no need for fontaine."
 
 ;;; IBuffer & isearch
 ;; ibuffer is the built-in Dired-like buffer manager (Emacs 30.2).
+
 ;; isearch-related keys (all built-in defaults):
 ;;   C-s / C-r   : incremental search over the buffer list
 ;;   M-s a C-s   : incremental search in marked buffers (ibuffer-do-isearch)
@@ -915,6 +925,7 @@ Background install is skipped for explicit interactive calls
 ;; LSP automatically.
 (use-package zig-mode
   :ensure t
+  :if (memq 'zig my/install-prog-modes)
   :mode "\\.\\(zig\\|zon\\)\\'"
   :custom
   (zig-indent-offset 4)
@@ -927,6 +938,7 @@ Background install is skipped for explicit interactive calls
 ;; slime', or open a .lisp file and press C-c C-z for the REPL.
 (use-package slime
   :ensure t
+  :if (memq 'common-lisp my/install-prog-modes)
   :mode ("\\.lisp\\'" . common-lisp-mode)
   :init
   (setq inferior-lisp-program "sbcl")
@@ -1069,6 +1081,7 @@ childframe, so hiding it always returns to the source buffer."
     (when-let* ((jar (my/java-debug-plugin-jar)))
       `(:bundles [,jar])))
   :ensure t
+  :if (memq 'java my/install-prog-modes)
   :after eglot
   :hook ((java-mode java-ts-mode) . eglot-java-mode)
   :custom
@@ -1121,6 +1134,7 @@ childframe, so hiding it always returns to the source buffer."
         (plist-put :port (or (plist-get config :jpda-port) 8000))
         (plist-put :projectName (project-name (project-current t))))))
   :ensure t
+  :if (memq 'java my/install-prog-modes)
   :custom
   ;; Use `kbd' (not a raw string): dape calls `global-set-key' with this
   ;; value at load time, and a plain "C-c d" string would be read as the
@@ -1147,6 +1161,7 @@ childframe, so hiding it always returns to the source buffer."
 ;; (multi-JDK switching, Tomcat deploy, Spring Boot run/stop, HCR)
 (use-package java-server
   :ensure (:host github :repo "LuciusChen/java-server")
+  :if (memq 'java my/install-prog-modes)
   :after (eglot dape)
   :hook ((java-mode java-ts-mode) . java-server-mode)
   :custom
@@ -1184,6 +1199,7 @@ childframe, so hiding it always returns to the source buffer."
 ;; template falls back to the default typescript-language-server.
 (use-package web-mode
   :ensure t
+  :if (memq 'typescript my/install-prog-modes)
   :config
   (defun my/angular-project-p ()
     "Return non-nil if current project is an Angular project."
@@ -1267,6 +1283,7 @@ vscode-css-language-server via `rass'; others use the default HTML server."
 ;; plain *-mode.
 (use-package markdown-mode
   :ensure t
+  :if (memq 'markdown my/install-prog-modes)
   :custom
   (markdown-fontify-code-blocks-natively t)
   :config
@@ -1278,6 +1295,7 @@ vscode-css-language-server via `rass'; others use the default HTML server."
 
 (use-package edit-indirect
   :ensure t
+  :if (memq 'markdown my/install-prog-modes)
   :after markdown-mode)
 
 ;; LLM coding agent frontend: a comint shell over ACP (Agent Client
