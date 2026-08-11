@@ -175,8 +175,176 @@ A `prog-mode' language declared with `:if (memq SYM
 my/install-prog-modes)' is only built/loaded when SYM is a member.
 nil means install none.  Example: (setq my/install-prog-modes '(zig)).")
 
+;; User-tunable extension variables.  These are defined HERE, before
+;; `custom-file' is loaded just below, so that custom.el can extend them at
+;; load time with `add-hook' / `add-to-list'.  Their consumers (the LSP
+;; dispatchers `my/ts-ls-contact' / `my/web-ls-contact' and the web-mode
+;; `auto-mode-alist' wiring) live further down and read whatever custom.el
+;; has set.  See custom-example.el for what each one does and how to extend.
+(defvar my/frontend-ts-contacts nil
+  "Abnormal hook of TypeScript LSP resolvers for the current project.
+Each function takes no arguments and returns an eglot contact
+\(command list) when it wants to handle the current project, or nil.
+`my/ts-ls-contact' tries them in order until one returns non-nil.
+Framework blocks (Angular, Vue, ...) add resolvers here; extend from
+custom.el with `add-hook'.")
+
+(defvar my/frontend-web-contacts nil
+  "Abnormal hook of HTML/web LSP resolvers for the current buffer.
+Same contract as `my/frontend-ts-contacts' but consulted for
+`html-mode' / `html-ts-mode' / `web-mode' buffers.")
+
+(defvar my/web-mode-auto-mode
+  '("\\.phtml\\'"     "\\.tpl\\.php\\'" "\\.[agj]sp\\'"  "\\.as[cp]x\\'"
+    "\\.erb\\'"       "\\.mustache\\'"  "\\.ejs\\'"      "\\.djhtml\\'"
+    "\\.jinja\\'"     "\\.j2\\'"        "\\.php\\'")
+  "List of `auto-mode-alist' regexps for files opened in `web-mode'.
+Extend it from custom.el with `add-to-list' (see custom-example.el).
+Plain .html is intentionally excluded so `html-ts-mode' handles it.")
+
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
 (load custom-file 'no-error 'no-message)
+
+;;; --- Interactive prog-mode selector ---
+;; `M-x my/add-prog-modes' selects languages through the standard minibuffer
+;; completion UI (the same vertico/orderless popup as `M-x'), via
+;; `completing-read-multiple'; each candidate is annotated with its
+;; description.  The selection becomes the new `my/install-prog-modes'
+;; (default = current set), is written to `custom.el', and init.el is
+;; reloaded so newly enabled languages install/load.  The selector
+;; (`my/select-multi') is generic: reuse it for any (KEY . LABEL) alist
+;; ("other options likewise").
+
+(defconst my/prog-mode-catalog
+  '((zig          . "zig-mode (Zig)")
+    (common-lisp  . "slime (Common Lisp, SBCL)")
+    (java         . "eglot-java + dape + java-server (Java stack)")
+    (typescript   . "typescript-language-server (.ts/.tsx)")
+    (angular      . "@angular/language-server (ngserver)")
+    (vue          . "Volar (@vue/language-server) (.vue SFCs)")
+    (web-mode     . "web-mode + HTML/web LSP (templates)")
+    (markdown     . "markdown-mode + edit-indirect"))
+  "Alist (SYMBOL . LABEL) of opt-in prog-mode languages.
+Each SYMBOL corresponds to a `:if (memq SYM my/install-prog-modes)' gate.")
+
+(defun my/select-multi--affix (by-name picked done)
+  "Return an affixation function for `my/select-multi''s completion.
+BY-NAME maps candidate name (string) -> label (string).  PICKED is the
+list of currently selected name strings; DONE is the finish sentinel.
+Each candidate is prefixed `[x]' (selected) or `[ ]' and suffixed with
+its label; DONE is suffixed `-- finish selection'.  All affixes are
+strings (never symbols), so `concat'/vertico never choke."
+  (lambda (cs)
+    (mapcar (lambda (c)
+              (let ((label (and (not (equal c done))
+                                (cdr (assoc c by-name)))))
+                (list c
+                      (cond ((equal c done)    "    ")
+                            ((member c picked) "[x] ")
+                            (t                 "[ ] "))
+                      (cond ((equal c done) "  -- finish selection")
+                            (label           (concat "  " label))
+                            (t               "")))))
+            cs)))
+
+(defun my/select-multi (prompt entries current)
+  "Toggle-select multiple KEYs from ENTRIES, one per round, and return them.
+Each round is a normal `completing-read' (the M-x-style vertico/orderless
+popup), so multi-selection is robust and does not depend on
+`completing-read-multiple'.  PROMPT is the prefix shown in the minibuffer
+prompt each round.  Pick a candidate to TOGGLE it on/off
+\(selected ones are marked `[x]'); pick `== done ==' to finish.  ENTRIES is
+a list of (KEY . LABEL) where KEY is a symbol and LABEL a string.  CURRENT
+is the initial selection.  Returns the final list of selected KEYs
+\(symbols)."
+  (let* ((by-name (mapcar (lambda (e) (cons (symbol-name (car e)) (cdr e)))
+                          entries))
+         (cands (mapcar #'car by-name))
+         (done "== done ==")
+         (all (cons done cands))
+         (picked (mapcar #'symbol-name (copy-sequence current))))
+    (catch 'done
+      (while t
+        (let* ((completion-extra-properties
+                (list :affixation-function
+                      (my/select-multi--affix by-name picked done)))
+               (choice (completing-read
+                        (format "%s[%d selected] pick to toggle, `%s' to finish: "
+                                prompt (length picked) done)
+                        all nil t)))
+          (cond
+           ((equal choice done)    (throw 'done nil))
+           ((member choice picked) (setq picked (delete choice picked)))
+           (t                      (push choice picked))))))
+    (delq nil (mapcar (lambda (s)
+                        (let ((sym (intern-soft s)))
+                          (and sym (assq sym entries) sym)))
+                      picked))))
+
+(defun my/prog-modes--write-custom (modes)
+  "Persist `my/install-prog-modes' = MODES into the variable `custom-file'.
+Replaces the existing setq line, or inserts one before the footer;
+creates the variable `custom-file' if it is absent."
+  (let* ((file (or custom-file
+                   (expand-file-name "custom.el" user-emacs-directory)))
+         (line (format "(setq my/install-prog-modes '%S)" modes))
+         (body (if (file-exists-p file)
+                   (with-temp-buffer
+                     (insert-file-contents file)
+                     (goto-char (point-min))
+                     (if (re-search-forward
+                          "^[ \t]*(setq[ \t]+my/install-prog-modes[ \t]+'.*)[ \t]*$"
+                          nil 'noerror)
+                         (progn (replace-match line) (buffer-string))
+                       (let ((pos (or (save-excursion
+                                        (goto-char (point-min))
+                                        (and (re-search-forward "^(provide" nil t)
+                                             (line-beginning-position)))
+                                      (point-max))))
+                         (goto-char pos)
+                         (insert line "\n\n")
+                         (buffer-string))))
+                 (concat ";;; custom.el --- your custom el -*- lexical-binding: t; -*-\n\n"
+                         line "\n\n(provide 'custom)\n\n;;; custom.el ends here\n"))))
+    (with-temp-file file
+      (insert body))))
+
+(defun my/prog-modes--reload-init ()
+  "Reload init.el and flush elpaca's queue so new prog-modes take effect."
+  (condition-case-unless-debug err
+      (progn
+        (load (expand-file-name "init.el" user-emacs-directory) nil t)
+        (when (fboundp 'elpaca-process-queues)
+          (elpaca-process-queues))
+        (message "init.el reloaded; prog-modes applied."))
+    (error
+     (message "Reload failed: %s" (error-message-string err))
+     (message "Saved to custom.el; restart Emacs to apply fully."))))
+
+(defun my/prog-modes--apply (modes)
+  "Persist MODES as `my/install-prog-modes', then reload init.el.
+MODES (a list of symbols) REPLACES the current enabled set.  Paired
+with `my/select-multi', which returns the full toggled set, so toggling
+a language off removes it."
+  (let ((sorted (sort (copy-sequence modes)
+                      (lambda (a b) (string< (symbol-name a) (symbol-name b))))))
+    (my/prog-modes--write-custom sorted)
+    (setq my/install-prog-modes sorted)
+    (message "my/install-prog-modes => %S" sorted)
+    (my/prog-modes--reload-init)))
+
+(defun my/add-prog-modes ()
+  "Toggle `prog-mode' languages on/off via the minibuffer and apply them.
+Each round pops up the standard M-x-style completion (vertico/orderless);
+pick a language to toggle it on/off (selected ones are marked `[x]'), and
+pick `== done ==' to finish.  The resulting set is written to `custom.el'
+as `my/install-prog-modes' and init.el is reloaded so the change takes
+effect (newly enabled languages install/load)."
+  (interactive)
+  (my/prog-modes--apply
+   (my/select-multi "Prog modes: "
+                    my/prog-mode-catalog
+                    my/install-prog-modes)))
 
 ;;; theme
 (use-package catppuccin-theme
@@ -1180,27 +1348,119 @@ childframe, so hiding it always returns to the source buffer."
          ("C-c J h" . java-server-hot-replace)
          ("C-c J d" . dape)))
 
-;;; --- Eglot: Angular / web-mode ---
-;; ngserver (from @angular/language-server) for Angular projects,
-;; typescript-language-server otherwise.  Since Eglot allows one server per
-;; buffer, Angular .html buffers use `rass' to merge ngserver +
-;; vscode-html-language-server + vscode-css-language-server into one
-;; connection; other projects fall back to the default HTML server.
-;; Install: npm install -g @angular/language-server @angular/language-service
-;;          typescript typescript-language-server vscode-langservers-extracted
+;;; --- Frontend LSP: TypeScript / Angular / Vue / web-mode ---
+;; Each frontend concern is an INDEPENDENT opt-in symbol in
+;; `my/install-prog-modes':
+;;   `typescript'  -- typescript-language-server for .ts/.tsx
+;;                    (built-in typescript-ts-mode / tsx-ts-mode; no package)
+;;   `angular'     -- @angular/language-server (ngserver) for Angular projects
+;;   `vue'         -- Volar (@vue/language-server) for .vue SFCs
+;;   `web-mode'    -- web-mode package + generic HTML/web LSP server
+;;
+;; Eglot allows one server per buffer, so each mode family (TS, html/web)
+;; has ONE contact dispatcher that consults an extensible hook of project
+;; resolvers (`my/frontend-ts-contacts' / `my/frontend-web-contacts').
+;; The first resolver returning non-nil wins; otherwise the stock server is
+;; used.  Add a framework by pushing a resolver onto the relevant hook --
+;; no need to touch the eglot entries.
 ;;
 ;; typescript-ts-mode / tsx-ts-mode / html-ts-mode are built-in (Emacs 29+)
 ;; and autoloaded, so plain symbol references suffice; no :ensure.
 ;; typescript-mode is the separate GNU ELPA package; it never matches when
 ;; absent.
-;;
-;; Helpers are only used here, so they live in this use-package.  Note: the
-;; rules are registered when web-mode first loads; opening .ts before any HTML
-;; template falls back to the default typescript-language-server.
+
+;; `my/frontend-ts-contacts' / `my/frontend-web-contacts' are defined early
+;; (before `custom-file' loads) so custom.el can extend them; the
+;; dispatchers below just consult those hooks.
+
+(defun my/ts-ls-contact (&optional _interactive)
+  "Return the TypeScript LSP contact for the current project.
+Framework-aware via `my/frontend-ts-contacts'; defaults to
+`typescript-language-server'."
+  (or (run-hook-with-args-until-success 'my/frontend-ts-contacts)
+      '("typescript-language-server" "--stdio")))
+
+(defun my/web-ls-contact (&optional _interactive)
+  "Return the HTML/web LSP contact for the current buffer.
+Framework-aware via `my/frontend-web-contacts'; defaults to
+`vscode-html-language-server'."
+  (or (run-hook-with-args-until-success 'my/frontend-web-contacts)
+      (eglot-alternatives
+       '(("vscode-html-language-server" "--stdio")
+         ("html-languageserver" "--stdio")))))
+
+;;; --- TypeScript (built-in typescript-ts-mode / tsx-ts-mode) ---
+;; No package is installed; only the LSP wiring is opt-in.  The entry is
+;; registered via `with-eval-after-load' so it is present before the first
+;; connect, independent of any package load.
+(when (memq 'typescript my/install-prog-modes)
+  (with-eval-after-load 'eglot
+    (add-to-list 'eglot-server-programs
+                 '(((typescript-ts-mode :language-id "typescript")
+                    (typescript-mode  :language-id "typescript")
+                    (tsx-ts-mode      :language-id "typescriptreact"))
+                   . my/ts-ls-contact))))
+
+;;; --- web-mode (independent, extensible) ---
+;; web-mode edits mixed-content web templates: HTML with embedded CSS, JS,
+;; and template engines (PHP, Django/Jinja, ERB, JSP, Mustache, EJS, ...).
+;; Its two core facets are made explicit and extensible here:
+;;   * `my/web-mode-auto-mode'          -- file extensions that open in web-mode
+;;   * `web-mode-enable-engine-detection' -- detect the template engine
+;; Extend `my/web-mode-auto-mode' in custom.el to add file types, e.g.
+;;   (add-to-list 'my/web-mode-auto-mode "\\.twig\\'")
+;; Plain .html is intentionally NOT in the list so html-ts-mode
+;; (treesit-auto) keeps handling it; add it there if you prefer web-mode.
+
+;; `my/web-mode-auto-mode' is defined early (before `custom-file' loads) so
+;; custom.el can extend it with `add-to-list'.
+
+;; Wire the extensions into `auto-mode-alist' at init (independent of when
+;; web-mode loads), so opening one of these files autoloads web-mode.
+(when (memq 'web-mode my/install-prog-modes)
+  (dolist (re my/web-mode-auto-mode)
+    (add-to-list 'auto-mode-alist (cons re 'web-mode))))
+
 (use-package web-mode
   :ensure t
-  :if (memq 'typescript my/install-prog-modes)
-  :config
+  :if (memq 'web-mode my/install-prog-modes)
+  :custom
+  ;; Indentation (2 spaces; matches typical frontend style)
+  (web-mode-markup-indent-offset 2)    ; HTML / tags
+  (web-mode-css-indent-offset    2)    ; <style> blocks
+  (web-mode-code-indent-offset   2)    ; embedded JS / template code
+  (web-mode-script-padding       2)    ; left padding inside <script>
+  (web-mode-style-padding        2)    ; left padding inside <style>
+  (web-mode-block-padding        2)    ; padding around template control blocks
+  ;; Auto-editing (core ergonomics)
+  (web-mode-enable-auto-closing     t) ; close tags / brackets
+  (web-mode-enable-auto-pairing     t) ; match delimiters
+  (web-mode-enable-auto-quoting     t) ; quote attributes automatically
+  (web-mode-enable-auto-opening     t) ; expand paired tags on split-line
+  (web-mode-enable-auto-indentation t)
+  ;; Engine detection: web-mode's core feature -- detect the template engine
+  ;; (django, erb, jsp, php, mustache, ...) from file content so the right
+  ;; block delimiters and fontification apply.  Override per file type with
+  ;; `web-mode-engines-alist'.
+  (web-mode-enable-engine-detection t))
+
+;; HTML / web LSP wiring (gated on `web-mode').  Framework resolvers on
+;; `my/frontend-web-contacts' take precedence over the default HTML server.
+(when (memq 'web-mode my/install-prog-modes)
+  (with-eval-after-load 'eglot
+    (add-to-list 'eglot-server-programs
+                 '(((html-mode    :language-id "html")
+                    (html-ts-mode :language-id "html")
+                    (web-mode     :language-id "html"))
+                   . my/web-ls-contact))))
+
+;;; --- Angular (@angular/language-server, ngserver) ---
+;; For Angular projects: the TS contact uses ngserver (template
+;; type-checking), and the web contact merges ngserver + vscode-html +
+;; vscode-css servers via `rass' for component templates.  Registered as
+;; resolvers so they only take effect in Angular projects.
+;; Install: npm install -g @angular/language-server @angular/language-service
+(when (memq 'angular my/install-prog-modes)
   (defun my/angular-project-p ()
     "Return non-nil if current project is an Angular project."
     (when-let* ((project (project-current))
@@ -1224,39 +1484,39 @@ childframe, so hiding it always returns to the source buffer."
           "--tsProbeLocations" (my/angular-probes)
           "--ngProbeLocations" (my/angular-probes)))
 
-  (defun my/angular-ts-contact (_interactive)
-    "Use Angular server for Angular projects, else `typescript-language-server'."
-    (if (my/angular-project-p)
-        (my/angular-ls-command)
-      '("typescript-language-server" "--stdio")))
+  (defun my/angular--ts-resolver ()
+    "ngserver contact for Angular projects, else nil."
+    (when (my/angular-project-p) (my/angular-ls-command)))
 
-  (defun my/angular-web-contact (_interactive)
-    "Return the HTML server contact for Angular or generic projects.
+  (defun my/angular--web-resolver ()
+    "rass-merged HTML contact for Angular projects, else nil.
 
 Angular projects merge ngserver + vscode-html-language-server +
-vscode-css-language-server via `rass'; others use the default HTML server."
-    (if (my/angular-project-p)
-        (list "rass" "--"
-              "ngserver" "--stdio"
-              "--tsProbeLocations" (my/angular-probes)
-              "--ngProbeLocations" (my/angular-probes)
-              "--" "vscode-html-language-server" "--stdio"
-              "--" "vscode-css-language-server" "--stdio")
-      (eglot-alternatives
-       '(("vscode-html-language-server" "--stdio")
-         ("html-languageserver" "--stdio")))))
+vscode-css-language-server via `rass'."
+    (when (my/angular-project-p)
+      (list "rass" "--"
+            "ngserver" "--stdio"
+            "--tsProbeLocations" (my/angular-probes)
+            "--ngProbeLocations" (my/angular-probes)
+            "--" "vscode-html-language-server" "--stdio"
+            "--" "vscode-css-language-server" "--stdio")))
 
+  (add-hook 'my/frontend-ts-contacts  #'my/angular--ts-resolver)
+  (add-hook 'my/frontend-web-contacts #'my/angular--web-resolver))
+
+;;; --- Vue (Volar, @vue/language-server) ---
+;; Vue 3 single-file components via `vue-mode' (MELPA) + Volar.  Decoupled
+;; from web-mode so `vue' works even when `web-mode' is not enabled.
+;; Install: npm install -g @vue/language-server
+(use-package vue-mode
+  :ensure t
+  :if (memq 'vue my/install-prog-modes)
+  :mode "\\.vue\\'"
+  :config
   (with-eval-after-load 'eglot
     (add-to-list 'eglot-server-programs
-                 '(((typescript-ts-mode :language-id "typescript")
-                    (typescript-mode :language-id "typescript")
-                    (tsx-ts-mode :language-id "typescriptreact"))
-                   . my/angular-ts-contact))
-    (add-to-list 'eglot-server-programs
-                 '(((html-mode :language-id "html")
-                    (html-ts-mode :language-id "html")
-                    (web-mode :language-id "html"))
-                   . my/angular-web-contact))))
+                 '((vue-mode :language-id "vue")
+                   . ("vue-language-server" "--stdio")))))
 
 ;;; Elisp linting/static checks (Emacs Lisp has no LSP server)
 (use-package elisp-mode
