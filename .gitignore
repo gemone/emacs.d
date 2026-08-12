@@ -1,33 +1,28 @@
-!.gitmodules
-backups/
+# Package managers
 elpaca/
 elpa/
-eshell/
-auto-save/
-auto-save-list/
-transient/
-cnfonts/
-tree-sitter/
-history
-.cache/
-tramp
+
+# All runtime state & caches (backups, auto-saves, eln, tree-sitter,
+# eshell, transient, savehist, projectile, tramp, ...)
+var/
+
+# Byte-compiled / misc
 *.elc
-eln-cache/
 *~
 
+# Agent tooling runtime data
+agent/
+.agent-shell/
+.omc/
+.opencode/
 
 # Local configuration (not tracked)
 early-init.local.el
 init.local.el
 options.local.el
-
-# Emacs persistent data files (*.eld)
-projects
-*.eld
+custom.el
 
 # LSP related
 .lsp-session*
 lsp-mode-version-cache
-
 .slime*
-custom.el

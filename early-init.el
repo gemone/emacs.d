@@ -20,6 +20,16 @@
 ;; byte-compiled config files can never shadow current init/early-init.
 (setq load-prefer-newer t)
 
+;; Skip `file-name-handler-alist' during startup: tramp & co. handlers
+;; are not needed while loading config/packages, and every path operation
+;; otherwise pays a handler lookup.  Restored after `emacs-startup-hook'.
+(defvar my/file-name-handler-alist-orig file-name-handler-alist
+  "Saved `file-name-handler-alist' value, restored after startup.")
+(setq file-name-handler-alist nil)
+(add-hook 'emacs-startup-hook
+          (lambda () (setq file-name-handler-alist
+                           my/file-name-handler-alist-orig)))
+
 (setq package-enable-at-startup nil)
 
 ;; CODEC -- utf-8

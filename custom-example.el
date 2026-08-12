@@ -4,14 +4,15 @@
 
 ;;
 ;; Copy this file to `custom.el' (which IS gitignored) and edit to taste.
-;; `init.el' loads `custom.el' via `custom-file'; THIS file is never
-;; loaded — it only declares what may be configured there.
+;; `lisp/init-prog-modes.el' loads `custom.el' via `custom-file'; THIS
+;; file is never loaded — it only declares what may be configured there.
 
 ;;; Code:
 
 ;; `my/install-prog-modes' — opt-in list of prog-mode languages whose
 ;; packages elpaca should install/load (default nil = none).  Each gated
-;; language in init.el uses `:if (memq 'SYM my/install-prog-modes)'.
+;; language in `lisp/init-lang-*.el' uses `:if (memq 'SYM
+;; my/install-prog-modes)'.
 ;;
 ;; Gated symbols (add the ones you use):
 ;;   `zig'          — zig-mode
@@ -39,11 +40,12 @@
 ;; Where customize writes, and the extensible `my/' variables
 ;; ---------------------------------------------------------------------------
 ;;
-;; `custom-file' is set to THIS file (custom.el) in init.el, so anything
-;; saved via `M-x customize' or `custom-set-variables' lands here.
+;; `custom-file' is set to THIS file (custom.el) in lisp/init-prog-modes.el,
+;; so anything saved via `M-x customize' or `custom-set-variables' lands here.
 ;;
-;; The variables below are defined in init.el BEFORE custom.el is loaded, so
-;; you can extend them safely right here:
+;; The variables below are defined (in lisp/init-core.el and
+;; lisp/init-prog-modes.el) BEFORE custom.el is loaded, so you can extend
+;; them safely right here:
 ;;
 ;; `my/frontend-ts-contacts'  -- abnormal hook of TS LSP resolvers.  Each
 ;;   function takes no args and returns an eglot contact (command list) for

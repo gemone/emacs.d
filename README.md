@@ -1,6 +1,38 @@
 
 # .emacs.d
 
+## 目录结构
+
+配置按模块拆分在 `lisp/` 下，`init.el` 只是一个按依赖顺序加载它们的入口：
+
+| 模块 | 职责 |
+|---|---|
+| `lisp/init-package.el` | Elpaca 包管理器引导 + use-package 桥接 |
+| `lisp/init-core.el` | GC、性能、运行时目录（`var/` 下的 `my/cache-dir`/`my/state-dir`）、基础 UI、备份 |
+| `lisp/init-prog-modes.el` | 可选语言框架（`my/install-prog-modes`）、可扩展 hook、加载 `custom.el` |
+| `lisp/init-appearance.el` | 主题（catppuccin）、字体（fontaine + CJK 探测）、表格对齐 |
+| `lisp/init-editing.el` | meow、smartparens、indent-bars、rainbow-delimiters |
+| `lisp/init-completion.el` | vertico / orderless / consult / corfu / cape |
+| `lisp/init-navigation.el` | ibuffer、isearch |
+| `lisp/init-dired.el` | dired 文件管理器（列示优化、subtree 树、narrow 过滤、wdired 改名） |
+| `lisp/init-coding.el` | 行号、transient、magit |
+| `lisp/init-project.el` | projectile、treemacs |
+| `lisp/init-treesit.el` | treesit-auto + tree-sitter CLI 语法安装器 |
+| `lisp/init-eglot.el` | eglot（LSP 客户端）、eldoc-box、Python LSP |
+| `lisp/init-lang-elisp.el` | Emacs Lisp flymake |
+| `lisp/init-lang-zig.el` | Zig（zig-mode） |
+| `lisp/init-lang-lisp.el` | Common Lisp（SLIME） |
+| `lisp/init-lang-java.el` | Java（jdtls + eglot-java + dape + java-server） |
+| `lisp/init-lang-web.el` | TypeScript / Angular / Vue / web-mode |
+| `lisp/init-lang-markdown.el` | markdown-mode + edit-indirect |
+| `lisp/init-extras.el` | agent-shell、ghostel |
+
+### 配置入口
+
+- **`custom.el`**（gitignored）：`M-x customize` 的落盘位置，以及所有可开关/可扩展变量的配置点。模板见 `custom-example.el`。语言开关用 `M-x my/add-prog-modes` 勾选，或直接在 `custom.el` 里 `setq my/install-prog-modes`。
+- **`modules/`**：放你自己开发的插件。目录下每个 `*.el` 文件都会在启动最后自动加入 `load-path` 并按文件名加载，插件可以 `(require)` 任何 `init-*.el` 模块；记得在插件里 `(provide 'xxx)` 以免重复加载。
+- **重载配置**：改了某个模块或 `custom.el` 后，`M-x my/reload-config` 按依赖顺序逐个重新加载所有 `lisp/init-*.el`（跳过 `init-package` 的 elpaca 引导）和 `modules/` 插件；也可在 shell 里 `emacsclient --eval "(my/reload-config)"`。daemon 环境下无需重启 Emacs。
+
 ## Git 配置
 
 `git` 本身配置:
@@ -90,11 +122,11 @@ cd /tmp/java-debug && mvn -DskipTests package
 ```
 
 `java-debug` 的 jar 产物在 `extension/server/` 下，放到 `my/java-debug-plugin-jar`
-查找的位置即可（如 `~/.cache/emacs/java-debug/`、`~/java-debug/`、`/tmp/java-debug/`），
+查找的位置即可（如 `~/.emacs.d/var/cache/java-debug/`、`~/java-debug/`、`/tmp/java-debug/`），
 `init.el` 会通过 `:bundles` 初始化选项让 jdtls 加载它。外置 Tomcat 仅在需要
 部署 WAR 时安装（macOS：`brew install tomcat@9`）。
 
-jdtls 的 workspace 元数据放在 `~/.cache/emacs/jdtls-workspace/`，不污染项目目录。
+jdtls 的 workspace 元数据放在 `~/.emacs.d/var/cache/jdtls-workspace/`，不污染项目目录。
 
 快捷键：
 
