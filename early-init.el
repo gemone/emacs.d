@@ -2,10 +2,23 @@
 
 ;;; Commentary:
 ;; Settings applied before the main init file loads: package bootstrap is
-;; deferred to `init.el', stale byte-compiled config files are removed, and
-;; UTF-8 is configured as the default coding system.
+;; deferred to `init.el', GC is deferred so startup stays fast, and UTF-8
+;; is configured as the default coding system.
 
 ;;; Code:
+
+;;; GC -- defer collection until after startup
+;; Emacs 30's default threshold (80 MiB) is already large, but package
+;; loading and native compilation during init can still trigger many
+;; collections.  Hold a much larger threshold (plus a high cons
+;; percentage) for the whole startup path; `init.el' restores sane values
+;; once `emacs-startup-hook' runs and reclaims the garbage at first idle.
+(setq gc-cons-threshold (* 512 1024 1024)) ; 512 MiB during startup
+(setq gc-cons-percentage 0.6)
+
+;; Prefer the newest source when both .el and .elc exist, so stale
+;; byte-compiled config files can never shadow current init/early-init.
+(setq load-prefer-newer t)
 
 (setq package-enable-at-startup nil)
 

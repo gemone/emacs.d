@@ -61,6 +61,60 @@
   ;; Enable use-package :ensure support for Elpaca.
   (elpaca-use-package-mode))
 
+;;; Garbage collection: fast startup, responsive completion
+;; `early-init.el' defers GC during startup by raising
+;; `gc-cons-threshold' / `gc-cons-percentage'.  This section restores
+;; normal values once startup is over, reclaims the startup garbage during
+;; the first idle moment, and keeps GC out of the minibuffer so vertico /
+;; orderless / consult completion stays snappy.
+
+(defvar my/gc-normal-threshold (* 128 1024 1024)
+  "GC cons threshold (bytes) used during normal editing.")
+(defvar my/gc-minibuffer-threshold (* 512 1024 1024)
+  "GC cons threshold (bytes) held while the minibuffer is active.")
+
+(defun my/gc-finish-startup ()
+  "Restore normal GC settings after startup and schedule a cleanup GC.
+`early-init.el' set a large startup threshold; this resets
+`gc-cons-threshold' and `gc-cons-percentage' to sane runtime values and
+runs one `garbage-collect' after a short idle delay so init-time consing
+is reclaimed without blocking input."
+  (setq gc-cons-threshold my/gc-normal-threshold)
+  (setq gc-cons-percentage 0.1)
+  (run-with-idle-timer 5 nil #'garbage-collect))
+
+(add-hook 'emacs-startup-hook #'my/gc-finish-startup)
+
+(defun my/gc-minibuffer-enter ()
+  "Raise the GC threshold while the minibuffer is active.
+Completion (vertico/orderless/consult) conses heavily while typing; a
+large threshold here avoids mid-typing GC pauses."
+  (setq gc-cons-threshold my/gc-minibuffer-threshold))
+
+(defun my/gc-minibuffer-exit ()
+  "Restore the normal GC threshold when the minibuffer closes."
+  (setq gc-cons-threshold my/gc-normal-threshold))
+
+(add-hook 'minibuffer-setup-hook #'my/gc-minibuffer-enter)
+(add-hook 'minibuffer-exit-hook #'my/gc-minibuffer-exit)
+
+;;; Performance tuning
+;; Track per-package load times; inspect with `M-x use-package-report'.
+(setq use-package-compute-statistics t)
+
+;; Subprocess output is read in chunks of this size; the 64 KiB default
+;; throttles chatty processes (eglot, magit, ...), so raise it.
+(setq read-process-output-max (* 4 1024 1024))
+
+;; Report startup time so tuning changes are measurable.
+(defun my/report-startup-time ()
+  "Message total and init-phase startup time."
+  (message "Startup finished in %.2fs (init %.2fs)"
+           (float-time (time-subtract (current-time) before-init-time))
+           (float-time (time-subtract after-init-time before-init-time))))
+
+(add-hook 'emacs-startup-hook #'my/report-startup-time)
+
 ;;; Basic emacs config
 (use-package emacs :ensure nil
   :preface
@@ -852,6 +906,8 @@ face settings and have no need for fontaine."
 
 (use-package transient
   :ensure t
+  ;; Only magit (and friends) need transient; do not load it at startup.
+  :defer t
   :custom
   ;; Transient (magit) history is persistent state
   (transient-history-file (expand-file-name "transient/history.el" my/state-dir)))
@@ -1562,7 +1618,10 @@ vscode-css-language-server via `rass'."
 ;; Protocol). Supports Claude Code, Codex, Gemini CLI, Pi, Goose, etc.
 ;; Open via M-x agent-shell (C-u for a new shell).
 (use-package agent-shell
-  :ensure t)
+  :ensure t
+  ;; ~10k lines loaded on first `M-x agent-shell' instead of at startup.
+  :defer t
+  :commands agent-shell)
 
 ;; Ghostel: fast terminal emulator using libghostty-vt.
 ;; Requires dynamic module support (module-file-suffix non-nil).
