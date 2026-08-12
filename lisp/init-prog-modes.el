@@ -19,9 +19,19 @@
 ;; Populate in custom.el (see custom-example.el).
 (defvar my/install-prog-modes nil
   "List of language symbols whose packages elpaca should install.
-A `prog-mode' language declared with `:if (memq SYM
-my/install-prog-modes)' is only built/loaded when SYM is a member.
-nil means install none.  Example: (setq my/install-prog-modes '(zig)).")
+`init.el' loads each `init-lang-*' module only when its language symbol
+is a member (see `my/lang-module-specs'), so disabled languages are never
+loaded and their packages never installed.  nil means install none.
+Example: (setq my/install-prog-modes '(zig)).")
+
+;; Predicate used by `init.el' to decide which `init-lang-*' modules to
+;; load: each module is loaded only when its language is enabled, so
+;; disabled languages are never loaded at all.  The opt-in list itself is
+;; maintained automatically via `M-x my/add-prog-modes'.
+
+(defun my/prog-mode-enabled-p (lang)
+  "Return non-nil if LANG (a symbol) is in `my/install-prog-modes'."
+  (memq lang my/install-prog-modes))
 
 ;; User-tunable extension variables.  These are defined HERE, before
 ;; `custom-file' is loaded just below, so that custom.el can extend them at
@@ -67,13 +77,13 @@ Plain .html is intentionally excluded so `html-ts-mode' handles it.")
   '((zig          . "zig-mode (Zig)")
     (common-lisp  . "slime (Common Lisp, SBCL)")
     (java         . "eglot-java + dape + java-server (Java stack)")
-    (typescript   . "typescript-language-server (.ts/.tsx)")
-    (angular      . "@angular/language-server (ngserver)")
-    (vue          . "Volar (@vue/language-server) (.vue SFCs)")
-    (web-mode     . "web-mode + HTML/web LSP (templates)")
+    (web-basic    . "web-mode + TypeScript/HTML LSP (basic web)")
+    (web-vue      . "Volar (@vue/language-server) (.vue SFCs)")
+    (web-angular  . "@angular/language-server (ngserver)")
     (markdown     . "markdown-mode + edit-indirect"))
   "Alist (SYMBOL . LABEL) of opt-in prog-mode languages.
-Each SYMBOL corresponds to a `:if (memq SYM my/install-prog-modes)' gate.")
+Each SYMBOL gates the matching `init-lang-*' module, which `init.el'
+loads only when the symbol is enabled.")
 
 (defun my/select-multi--affix (by-name picked done)
   "Return an affixation function for `my/select-multi''s completion.

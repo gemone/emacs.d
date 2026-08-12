@@ -2,9 +2,10 @@
 
 ;;; Commentary:
 ;; Zig support via `zig-mode' (NonGNU ELPA): font-lock, indentation and
-;; imenu, plus `zig fmt' formatting.  Gated on `(memq 'zig
-;; my/install-prog-modes)'.  Eglot's built-in zig-mode -> zls defaults
-;; work; installing zls enables LSP automatically.
+;; imenu, plus `zig fmt' formatting.  Loaded only when `zig' is in
+;; `my/install-prog-modes' — `init.el' gates this module.  Eglot's
+;; built-in zig-mode -> zls defaults work; installing zls enables LSP
+;; automatically.
 
 ;;; Code:
 ;;; --- Zig ---
@@ -16,7 +17,6 @@
 ;; LSP automatically.
 (use-package zig-mode
   :ensure t
-  :if (memq 'zig my/install-prog-modes)
   :mode "\\.\\(zig\\|zon\\)\\'"
   :custom
   (zig-indent-offset 4)

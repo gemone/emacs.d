@@ -9,6 +9,10 @@
 ;; editing are never blocked.
 
 ;;; Code:
+;; Resolve the shared dirs (`my/cache-dir' etc.) at compile time too, so
+;; byte/native-compilation sees them as bound (no "free variable" noise).
+(eval-when-compile (require 'init-const))
+
 ;; ts
 (use-package treesit-auto
   :ensure t

@@ -1,11 +1,11 @@
-;;; init-lang-elisp.el --- Emacs Lisp flymake -*- lexical-binding: t; -*-
+;;; init-elisp.el --- Emacs Lisp flymake -*- lexical-binding: t; -*-
 
 ;;; Commentary:
-;; Emacs Lisp development support.  Emacs Lisp has no LSP server, so this
-;; module only configures the built-in `flymake' backends: checkdoc
-;; (documentation/style) is kept, byte-compilation is removed because the
-;; subprocess `load-path' cannot see Elpaca packages and would produce
-;; noise.
+;; Emacs Lisp development support (always loaded, core module).  Emacs
+;; Lisp has no LSP server, so this module only configures the built-in
+;; `flymake' backends: checkdoc (documentation/style) is kept,
+;; byte-compilation is removed because the subprocess `load-path' cannot
+;; see Elpaca packages and would produce noise.
 
 ;;; Code:
 ;; These are defined in `checkdoc.el', which is loaded lazily by the
@@ -43,6 +43,6 @@ see Elpaca packages and produces a lot of \"function not defined\" noise."
                   "\\(\\_>\\|[.!?][ \t\n\"]\\)")))
   (setq-default checkdoc-package-keywords-flag nil))
 
-(provide 'init-lang-elisp)
+(provide 'init-elisp)
 
-;;; init-lang-elisp.el ends here
+;;; init-elisp.el ends here

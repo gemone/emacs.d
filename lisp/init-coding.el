@@ -6,6 +6,10 @@
 ;; library) and `magit' itself.
 
 ;;; Code:
+;; Resolve the shared dirs (`my/state-dir' etc.) at compile time too, so
+;; byte/native-compilation sees them as bound (no "free variable" noise).
+(eval-when-compile (require 'init-const))
+
 ;;; Coding
 ;; Relative line numbers in prog-mode, with a big-file fallback to
 ;; absolute numbers (relative numbering re-renders on every cursor move).

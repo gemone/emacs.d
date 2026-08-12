@@ -8,6 +8,7 @@
 | 模块 | 职责 |
 |---|---|
 | `lisp/init-package.el` | Elpaca 包管理器引导 + use-package 桥接 |
+| `lisp/init-const.el` | 无副作用的共享常量（`my/var-dir`/`my/cache-dir`/`my/state-dir` 等运行时目录） |
 | `lisp/init-core.el` | GC、性能、运行时目录（`var/` 下的 `my/cache-dir`/`my/state-dir`）、基础 UI、备份 |
 | `lisp/init-prog-modes.el` | 可选语言框架（`my/install-prog-modes`）、可扩展 hook、加载 `custom.el` |
 | `lisp/init-appearance.el` | 主题（catppuccin）、字体（fontaine + CJK 探测）、表格对齐 |
@@ -19,11 +20,14 @@
 | `lisp/init-project.el` | projectile、treemacs |
 | `lisp/init-treesit.el` | treesit-auto + tree-sitter CLI 语法安装器 |
 | `lisp/init-eglot.el` | eglot（LSP 客户端）、eldoc-box、Python LSP |
-| `lisp/init-lang-elisp.el` | Emacs Lisp flymake |
+| `lisp/init-elisp.el` | Emacs Lisp flymake（常驻模块，不受语言开关控制） |
+| `lisp/init-lang-*.el` | 可选语言（门控符号 = 文件名后缀，如 `init-lang-zig` → `zig`） |
 | `lisp/init-lang-zig.el` | Zig（zig-mode） |
-| `lisp/init-lang-lisp.el` | Common Lisp（SLIME） |
+| `lisp/init-lang-common-lisp.el` | Common Lisp（SLIME） |
 | `lisp/init-lang-java.el` | Java（jdtls + eglot-java + dape + java-server） |
-| `lisp/init-lang-web.el` | TypeScript / Angular / Vue / web-mode |
+| `lisp/init-lang-web-basic.el` | web-mode + TypeScript/HTML LSP |
+| `lisp/init-lang-web-vue.el` | Vue（vue-mode + Volar） |
+| `lisp/init-lang-web-angular.el` | Angular（ngserver） |
 | `lisp/init-lang-markdown.el` | markdown-mode + edit-indirect |
 | `lisp/init-extras.el` | agent-shell、ghostel |
 

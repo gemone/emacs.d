@@ -3,7 +3,8 @@
 ;;; Commentary:
 ;; Markdown via `markdown-mode' 2.8+ (MELPA): native font-lock in code
 ;; blocks, and dedicated indirect-buffer editing with `C-c '' (needs
-;; `edit-indirect').  Gated on `(memq 'markdown my/install-prog-modes)'.
+;; `edit-indirect').  Loaded only when `markdown' is in
+;; `my/install-prog-modes' — `init.el' gates this module.
 
 ;;; Code:
 ;;; --- Markdown: code block editing ---
@@ -15,7 +16,6 @@
 ;; plain *-mode.
 (use-package markdown-mode
   :ensure t
-  :if (memq 'markdown my/install-prog-modes)
   ;; markdown-mode's autoloads handle .md/.markdown on file open.
   :defer t
   :custom
@@ -29,7 +29,6 @@
 
 (use-package edit-indirect
   :ensure t
-  :if (memq 'markdown my/install-prog-modes)
   :after markdown-mode)
 
 (provide 'init-lang-markdown)

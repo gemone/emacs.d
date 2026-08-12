@@ -11,9 +11,10 @@
 ;;     `~/.emacs.d/var/', gitignored), UI chrome, backups/auto-saves,
 ;;     tree-sitter/eln cache placement and auto-revert.
 ;;
-;; This module defines `my/var-dir', `my/cache-dir' and `my/state-dir';
-;; every other module may reference them, so `init-core' is loaded right
-;; after `init-package'.  Loaded from `init.el' as `init-core'.
+;; This module builds on `init-const' (shared runtime dirs: `my/var-dir',
+;; `my/cache-dir', `my/state-dir'); other modules may reference them too,
+;; so `init-core' is loaded right after `init-package'.  Loaded from
+;; `init.el' as `init-core'.
 
 ;;; Code:
 
@@ -58,6 +59,20 @@ large threshold here avoids mid-typing GC pauses."
 ;; Track per-package load times; inspect with `M-x use-package-report'.
 (setq use-package-compute-statistics t)
 
+;; Native-compile the config modules (lisp/init-*.el) asynchronously, once.
+;; `require' then loads the cached .eln on later startups, trimming init
+;; time.  The .eln filename embeds a hash of the source, so an edited .el
+;; never shadows the .eln — the file simply stops matching.  Guard: use
+;; `native-compile-async' only when the output .eln does not exist yet,
+;; because it recompiles unconditionally otherwise.
+(let* ((lisp-dir (expand-file-name "lisp/" user-emacs-directory))
+       (probe (expand-file-name "init-core.el" lisp-dir))
+       (eln (and (require 'comp nil t)
+                 (comp-el-to-eln-filename probe))))
+  (when (and eln (not (file-exists-p eln)))
+    (run-with-idle-timer 5 nil
+      (lambda () (native-compile-async lisp-dir 1)))))
+
 ;; Subprocess output is read in chunks of this size; the 64 KiB default
 ;; throttles chatty processes (eglot, magit, ...), so raise it.
 (setq read-process-output-max (* 4 1024 1024))
@@ -76,19 +91,14 @@ large threshold here avoids mid-typing GC pauses."
 
 (add-hook 'emacs-startup-hook #'my/report-startup-time)
 
+(require 'init-const)
+
 ;;; Basic emacs config
 (use-package emacs :ensure nil
   :preface
-  ;; All runtime state and caches live under `var/' inside the config
-  ;; directory (gitignored), keeping the root clean — only real config is
-  ;; tracked.  Two subdirs keep the cache/state semantic split:
-  ;;   var/cache  (backups, auto-saves, eln, tree-sitter, ...)
-  ;;   var/state  (savehist, eshell, transient history, projectile, ...)
-  (defvar my/var-dir (expand-file-name "var/" user-emacs-directory))
-  (defvar my/cache-dir (expand-file-name "cache/" my/var-dir))
-  (defvar my/state-dir (expand-file-name "state/" my/var-dir))
-  (defvar my/backup-dir (expand-file-name "backup/" my/cache-dir))
-  (defvar my/auto-save-dir (expand-file-name "auto-save/" my/cache-dir))
+  ;; The shared dirs (`my/var-dir' etc.) come from `init-const' (required
+  ;; above); this block only makes sure they exist and extends the list
+  ;; with derived subdirectories.
   (dolist (dir (list my/cache-dir my/state-dir my/backup-dir my/auto-save-dir
                      (expand-file-name "auto-save-list/" my/cache-dir)
                      (expand-file-name "eshell/" my/state-dir)

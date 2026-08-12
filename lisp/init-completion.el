@@ -8,6 +8,10 @@
 ;; `savehist' keeps minibuffer history in `my/state-dir'.
 
 ;;; Code:
+;; Resolve the shared dirs (`my/state-dir' etc.) at compile time too, so
+;; byte/native-compilation sees them as bound (no "free variable" noise).
+(eval-when-compile (require 'init-const))
+
 ;;; Completion
 ;; MiniBuff
 (use-package vertico

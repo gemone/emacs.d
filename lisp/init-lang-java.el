@@ -4,9 +4,14 @@
 ;; Full Java development environment: `eglot-java' (jdtls integration),
 ;; `dape' (DAP debugger) and LuciusChen's `java-server' toolkit
 ;; (multi-JDK switching, Tomcat deploy, Spring Boot run/stop, HCR).
-;; Gated on `(memq 'java my/install-prog-modes)'.
+;; Gated on `java' being in `my/install-prog-modes' — `init.el' loads this
+;; module only when it is enabled.
 
 ;;; Code:
+;; Resolve the shared dirs (`my/cache-dir' etc.) at compile time too, so
+;; byte/native-compilation sees them as bound (no "free variable" noise).
+(eval-when-compile (require 'init-const))
+
 ;;; --- Java: full development environment (jdtls + eglot-java + dape + java-server) ---
 ;; References:
 ;;   - https://emacs-china.org/t/emacs-eglot-eglot-java-dape-java/30086
@@ -54,7 +59,6 @@
     (when-let* ((jar (my/java-debug-plugin-jar)))
       `(:bundles [,jar])))
   :ensure t
-  :if (memq 'java my/install-prog-modes)
   :after eglot
   :hook ((java-mode java-ts-mode) . eglot-java-mode)
   :custom
@@ -107,7 +111,6 @@
         (plist-put :port (or (plist-get config :jpda-port) 8000))
         (plist-put :projectName (project-name (project-current t))))))
   :ensure t
-  :if (memq 'java my/install-prog-modes)
   ;; Load on first `M-x dape' (~240 ms saved at startup).
   :defer t
   :commands dape
@@ -137,7 +140,6 @@
 ;; (multi-JDK switching, Tomcat deploy, Spring Boot run/stop, HCR)
 (use-package java-server
   :ensure (:host github :repo "LuciusChen/java-server")
-  :if (memq 'java my/install-prog-modes)
   :after (eglot dape)
   :hook ((java-mode java-ts-mode) . java-server-mode)
   :custom

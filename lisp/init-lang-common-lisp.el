@@ -1,9 +1,10 @@
-;;; init-lang-lisp.el --- Common Lisp (SLIME) -*- lexical-binding: t; -*-
+;;; init-lang-common-lisp.el --- Common Lisp (SLIME) -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;; Common Lisp development via SLIME over a SWANK connection to SBCL.
-;; Gated on `(memq 'common-lisp my/install-prog-modes)'.  Start with
-;; `M-x slime', or open a .lisp file and press C-c C-z for the REPL.
+;; Loaded only when `common-lisp' is in `my/install-prog-modes' —
+;; `init.el' gates this module (gate symbol = filename suffix).  Start
+;; with `M-x slime', or open a .lisp file and press C-c C-z for the REPL.
 
 ;;; Code:
 ;;; --- Common Lisp (SLIME) ---
@@ -13,12 +14,11 @@
 ;; slime', or open a .lisp file and press C-c C-z for the REPL.
 (use-package slime
   :ensure t
-  :if (memq 'common-lisp my/install-prog-modes)
   :mode ("\\.lisp\\'" . common-lisp-mode)
   :init
   (setq inferior-lisp-program "sbcl")
   (setq slime-contribs '(slime-fancy)))
 
-(provide 'init-lang-lisp)
+(provide 'init-lang-common-lisp)
 
-;;; init-lang-lisp.el ends here
+;;; init-lang-common-lisp.el ends here
