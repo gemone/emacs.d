@@ -119,7 +119,9 @@ is the initial selection.  Returns the final list of selected KEYs
                           entries))
          (cands (mapcar #'car by-name))
          (done "== done ==")
-         (all (cons done cands))
+         ;; `done' is always the LAST candidate, so the finish sentinel
+         ;; stays at the bottom of the vertico list.
+         (all (append cands (list done)))
          (picked (mapcar #'symbol-name (copy-sequence current))))
     (catch 'done
       (while t
