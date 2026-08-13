@@ -9,6 +9,11 @@
 ;;   - indent-bars and rainbow-delimiters for nesting visuals.
 
 ;;; Code:
+;; These are defined in `flymake' (built-in, lazily loaded); declare them
+;; so byte/native-compilation of this file knows about them.
+(declare-function flymake-show-buffer-diagnostics "flymake")
+(declare-function flymake--diagnostics-buffer-name "flymake")
+
 ;;; Meow Editor
 (use-package meow
   :ensure t
@@ -95,6 +100,53 @@
           (quit-window nil win)
         (flymake-show-buffer-diagnostics))))
 
+  (defvar my/kmacro-recording-register nil
+    "Register character currently being recorded into, or nil.")
+  (defvar my/kmacro-last-register nil
+    "Register character of the last `my/kmacro-call-register' (`@@').")
+
+  (defun my/kmacro-record-toggle ()
+    "Vim-style macro recording: `q<letter>' records into register <letter>.
+Press `q' again to stop; the macro is then stored in that register and
+can be run with `@<letter>'.  A trailing `q' stop key, if recorded, is
+stripped from the macro."
+    (interactive)
+    (if defining-kbd-macro
+        (let ((reg my/kmacro-recording-register))
+          (kmacro-end-macro nil)
+          (setq my/kmacro-recording-register nil)
+          (when (and reg last-kbd-macro)
+            ;; The stop-key `q' may have been recorded as the last event.
+            (let ((macro last-kbd-macro))
+              (when (and (> (length macro) 0)
+                         (equal (aref macro (1- (length macro))) ?q))
+                (setq macro (seq-subseq macro 0 (1- (length macro)))))
+              (set-register reg macro)
+              (message "Recorded macro to register %c (%d keys)"
+                       reg (length macro)))))
+      (let ((c (read-char "Record macro to register (a-z): ")))
+        (if (and (>= c ?a) (<= c ?z))
+            (progn
+              (setq my/kmacro-recording-register c)
+              (kmacro-start-macro nil)
+              (message "Recording to register %c, press q to stop" c))
+          (message "Invalid register: %c" c)))))
+
+  (defun my/kmacro-call-register ()
+    "Vim-style `@<letter>': run the macro stored in register <letter>.
+`@@' reruns the last register used."
+    (interactive)
+    (let* ((c (read-char "Run macro from register (a-z): "))
+           (reg (if (eq c ?@)
+                    my/kmacro-last-register
+                  (and (>= c ?a) (<= c ?z) c)))
+           (macro (and reg (get-register reg))))
+      (if macro
+          (progn
+            (setq my/kmacro-last-register reg)
+            (execute-kbd-macro macro))
+        (message "No macro in register %c" (or reg c)))))
+
   (meow-leader-define-key
    ;; Use SPC (0-9) for digit arguments.
    '("1" . meow-digit-argument)
@@ -158,7 +210,11 @@
    '("o" . meow-open-below)
    '("O" . meow-open-above)
    '("p" . meow-yank)
-   '("q" . meow-quit)
+   ;; vim-style register macros: `q<letter>' records into register
+   ;; <letter> (press `q' again to stop), `@<letter>' runs it, `@@' reruns
+   ;; the last one.
+   '("q" . my/kmacro-record-toggle)
+   '("@" . my/kmacro-call-register)
    '("Q" . meow-goto-line)
    '("r" . meow-replace)
    '("R" . meow-swap-grab)

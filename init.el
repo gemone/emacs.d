@@ -129,7 +129,11 @@ actually re-run; the enabled `init-lang-*' modules are reloaded with the
 same `my/install-prog-modes' gating as startup; `modules/' plugins are
 force-reloaded too.  The current `my/install-prog-modes' (e.g. just
 edited in `custom.el') is picked up.  Use `M-x my/reload-config', or from
-the shell: `emacsclient --eval \"(my/reload-config)\"'."
+the shell: `emacsclient --eval \"(my/reload-config)\"'.
+
+Note: changes inside `:ensure t' package configs (e.g. `meow' in
+`init-editing') are NOT re-applied by a reload — elpaca skips `:config'
+for already-loaded packages.  Restart Emacs (or the daemon) for those."
   (interactive)
   (let ((lisp-dir (expand-file-name "lisp/" user-emacs-directory)))
     (dolist (mod (cdr my/init-modules))
