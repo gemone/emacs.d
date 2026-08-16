@@ -26,3 +26,6 @@ custom.el
 .lsp-session*
 lsp-mode-version-cache
 .slime*
+
+# Emacs server socket
+server/
