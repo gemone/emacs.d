@@ -62,13 +62,17 @@ large threshold here avoids mid-typing GC pauses."
 ;; Native-compile the config modules (lisp/init-*.el) asynchronously, once.
 ;; `require' then loads the cached .eln on later startups, trimming init
 ;; time.  The .eln filename embeds a hash of the source, so an edited .el
-;; never shadows the .eln — the file simply stops matching.  Guard: use
-;; `native-compile-async' only when the output .eln does not exist yet,
-;; because it recompiles unconditionally otherwise.
+;; never shadows the .eln — the file simply stops matching.  Only compile
+;; when native compilation actually works and the .eln is missing: an
+;; Emacs built with comp support but without libgccjit (common on
+;; Windows) would otherwise raise "Cannot find libgccjit library" on
+;; every idle timer, and `native-compile-async' recompiles unconditionally.
 (let* ((lisp-dir (expand-file-name "lisp/" user-emacs-directory))
        (probe (expand-file-name "init-core.el" lisp-dir))
-       (eln (and (require 'comp nil t)
-                 (comp-el-to-eln-filename probe))))
+       (native-comp (and (require 'comp nil t)
+                         (fboundp 'native-comp-available-p)
+                         (native-comp-available-p)))
+       (eln (and native-comp (comp-el-to-eln-filename probe))))
   (when (and eln (not (file-exists-p eln)))
     (run-with-idle-timer 5 nil
       (lambda () (native-compile-async lisp-dir 1)))))
