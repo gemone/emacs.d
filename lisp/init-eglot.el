@@ -26,23 +26,28 @@
   (defun my/eglot-maybe-ensure ()
     "Start eglot in `prog-mode' buffers, except the Lisp modes."
     (unless (memq major-mode '(emacs-lisp-mode common-lisp-mode))
-      (eglot-ensure)))
+      ;; A missing/unspawnable LSP server can make eglot raise
+      ;; \"processp, nil\"; don't let that spam on every file open.
+      (ignore-errors (eglot-ensure))))
   (defun my/eglot-format-on-save ()
     "Format the buffer with eglot when saving, if managed by it.
 Named function so `add-hook' dedups it across `my/reload-config' runs."
     (when (eglot-managed-p) (eglot-format)))
   (add-hook 'eglot-managed-mode-hook #'eglot-inlay-hints-mode)
   (add-hook 'before-save-hook #'my/eglot-format-on-save)
+  ;; Meow normal-state g-prefix: gd / gi / gr (extends my/meow-g-prefix-map).
+  ;; Deferred so a not-yet-loaded meow can't error out here (which would
+  ;; abort init and stop elpaca from processing its build queue).
+  (with-eval-after-load 'meow
+    (when (boundp 'meow-normal-state-keymap)
+      (define-key meow-normal-state-keymap (kbd "g d") #'xref-find-definitions)
+      (define-key meow-normal-state-keymap (kbd "g i") #'xref-find-implementations)
+      (define-key meow-normal-state-keymap (kbd "g r") #'xref-find-references)))
   :bind (:map eglot-mode-map
          ("C-c c a" . eglot-code-actions)
          ("C-c c o" . eglot-code-action-organize-imports)
          ("C-c c r" . eglot-rename)
-         ("C-c c f" . eglot-format)
-         ;; Meow normal-state g-prefix: gd / gi / gr (extends my/meow-g-prefix-map)
-         (:map meow-normal-state-keymap
-               ("g d" . xref-find-definitions)
-               ("g i" . xref-find-implementations)
-               ("g r" . xref-find-references))))
+         ("C-c c f" . eglot-format)))
 
 ;;; Eldoc documentation in a childframe (eglot hover docs)
 (use-package eldoc-box
