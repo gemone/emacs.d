@@ -80,7 +80,8 @@ Plain .html is intentionally excluded so `html-ts-mode' handles it.")
     (web-basic    . "web-mode + TypeScript/HTML LSP (basic web)")
     (web-vue      . "Volar (@vue/language-server) (.vue SFCs)")
     (web-angular  . "@angular/language-server (ngserver)")
-    (markdown     . "markdown-mode + edit-indirect"))
+    (markdown     . "markdown-mode + edit-indirect")
+    (data         . "yaml/toml/json (built-in ts modes + taplo)"))
   "Alist (SYMBOL . LABEL) of opt-in prog-mode languages.
 Each SYMBOL gates the matching `init-lang-*' module, which `init.el'
 loads only when the symbol is enabled.")

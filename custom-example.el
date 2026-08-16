@@ -23,6 +23,7 @@
 ;;   `vue'          — Volar (@vue/language-server) for .vue SFCs
 ;;   `web-mode'     — web-mode + generic HTML/web LSP server (templates)
 ;;   `markdown'     — markdown-mode + edit-indirect
+;;   `data'         — yaml/toml/json (built-in ts modes + taplo LSP)
 ;;
 ;; Always enabled (shared infra / core, NOT in the list):
 ;;   eglot, treesit-auto, prog-mode, eldoc-box, elisp-mode.
@@ -31,7 +32,7 @@
 ;;
 ;; Uncomment and list the languages you actually use:
 ;; (setq my/install-prog-modes
-;;       '(zig common-lisp java typescript web-mode angular vue markdown))
+;;       '(zig common-lisp java typescript web-mode angular vue markdown data))
 ;;
 ;; Or do it interactively:  M-x my/add-prog-modes
 ;;   (checkbox popup that writes the list here and reloads init.el to apply)
